@@ -38,6 +38,12 @@ The platform is **location-independent**: choose an area during setup, add your 
 
 Built with **Flask, Leaflet and SQLite**, it runs in a single Docker container. No external database is required.
 
+<p align="center">
+  <a href="https://github.com/pqpxo/multispace-localmap/blob/main/public/localmap_screenshot.png">
+    <img src="localmap_screenshot.png" alt="Multi Space Local Map logo" width="1000">
+  </a>
+</p>
+
 ## Features
 
 | | Feature | Description |
