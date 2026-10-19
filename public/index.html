@@ -1,0 +1,1374 @@
+<!-- version 3 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Local Map</title>
+<link rel="icon" href="logo.png" type="image/png">
+<meta name="description" content="Interactive community map">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a href="#map-area" class="skip-link">Skip to map</a>
+<div id="app">
+  <aside id="sidebar" aria-label="Map controls">
+    <div class="sidebar-header">
+      <img src="logo.png" alt="" class="sidebar-logo" id="siteLogo">
+      <h1 id="siteName">Local Map</h1>
+      <p class="sidebar-subtitle" id="siteTagline">Loading...</p>
+      <div class="cta-row">
+      <button class="cta-quicklinks" onclick="openInfoModal()" aria-label="Quick links">
+        <span>Quick Links</span>
+        <span class="cta-arrows">
+          <svg width="38" height="25" viewBox="0 0 66 43" xmlns="http://www.w3.org/2000/svg">
+            <g fill="none" fill-rule="evenodd">
+              <path class="cta-arrow-1" d="M40.15,3.89 L43.98,0.14 C44.17,-0.05 44.48,-0.05 44.68,0.14 L65.69,20.78 C66.09,21.17 66.09,21.81 65.70,22.20 L44.68,42.86 C44.48,43.05 44.17,43.05 43.98,42.86 L40.15,39.11 C39.96,38.91 39.95,38.60 40.15,38.40 L56.99,21.86 C57.19,21.66 57.19,21.35 57.00,21.15 L40.15,4.61 C39.96,4.41 39.95,4.10 40.15,3.90 Z" fill="#fff"/>
+              <path class="cta-arrow-2" d="M20.15,3.89 L23.98,0.14 C24.17,-0.05 24.48,-0.05 24.68,0.14 L45.69,20.78 C46.09,21.17 46.09,21.81 45.70,22.20 L24.68,42.86 C24.48,43.05 24.17,43.05 23.98,42.86 L20.15,39.11 C19.96,38.91 19.95,38.60 20.15,38.40 L36.99,21.86 C37.19,21.66 37.19,21.35 37.00,21.15 L20.15,4.61 C19.96,4.41 19.95,4.10 20.15,3.90 Z" fill="#fff"/>
+              <path class="cta-arrow-3" d="M0.15,3.89 L3.98,0.14 C4.17,-0.05 4.48,-0.05 4.68,0.14 L25.69,20.78 C26.09,21.17 26.09,21.81 25.70,22.20 L4.68,42.86 C4.48,43.05 4.17,43.05 3.98,42.86 L0.15,39.11 C-0.04,38.91 -0.05,38.60 0.15,38.40 L16.99,21.86 C17.19,21.66 17.19,21.35 17.00,21.15 L0.15,4.61 C-0.04,4.41 -0.05,4.10 0.15,3.90 Z" fill="#fff"/>
+            </g>
+          </svg>
+        </span>
+      </button>
+      <div class="social-links" id="socialLinks"></div>
+      </div>
+    </div>
+    <div class="sidebar-search">
+      <label for="search" class="sr-only">Search places by name, type or keyword</label>
+      <input id="search" type="search" placeholder="Search by name, type or keyword…"
+             autocomplete="off" role="searchbox">
+    </div>
+    <nav class="sidebar-categories" aria-labelledby="categoriesHeading">
+      <h2 class="sidebar-section-title" id="categoriesHeading">Categories</h2>
+      <div id="chips" role="group" aria-label="Filter places by category"></div>
+    </nav>
+    <div class="sidebar-footer">
+      Created by <a href="https://swakes.co.uk" target="_blank" rel="noopener"><strong>SWAKES</strong></a>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar">‹</button>
+  </aside>
+  <main id="map-area" aria-label="Map">
+    <div id="map" role="application" aria-label="Interactive map of local places"></div>
+    <div id="mapPickBanner" class="map-pick-banner" style="display:none;">Click the map to place the event</div>
+    <div class="map-fab">
+      <button class="fab-btn" onclick="openBusinessModal()">+ Add business</button>
+      <button class="fab-btn" onclick="openEventModal()">+ Submit event</button>
+    </div>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">Loading…</div>
+  </main>
+</div>
+
+<!-- Report / suggest edit / review modal -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+    <div class="modal-header">
+      <h2 id="reportModalTitle">Report a place</h2>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('reportModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <button class="tab active" data-tab="edit">Suggest edit</button>
+        <button class="tab" data-tab="review">Leave review</button>
+        <button class="tab" data-tab="closed">Report closed</button>
+      </div>
+
+      <!-- Edit panel -->
+      <div class="tab-panel active" data-panel="edit">
+        <div class="form-row">
+          <label for="editField">What needs amending?</label>
+          <select id="editField">
+            <option value="name">Business name</option>
+            <option value="subcategory">Business type</option>
+            <option value="opening_hours">Opening hours</option>
+            <option value="phone">Telephone</option>
+            <option value="email">Email</option>
+            <option value="website">Website</option>
+            <option value="address">Address</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="editValue">Correct value</label>
+          <input type="text" id="editValue" placeholder="e.g. 0115 123 4567">
+        </div>
+        <div class="form-row">
+          <label for="editNotes">Notes (optional)</label>
+          <textarea id="editNotes" placeholder="Anything else we should know?"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="editEmail">Your email</label>
+          <input type="email" id="editEmail" placeholder="you@example.com" required>
+        </div>
+        <button class="btn-submit" onclick="submitEdit()">Submit edit</button>
+        <div class="form-help">Submissions are reviewed before being published.</div>
+      </div>
+
+      <!-- Review panel -->
+      <div class="tab-panel" data-panel="review">
+        <div class="form-row">
+          <label id="ratingLabel">Your rating</label>
+          <div class="stars" id="starPicker">
+            <span class="star" data-value="1">★</span>
+            <span class="star" data-value="2">★</span>
+            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span>
+            <span class="star" data-value="5">★</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="reviewComment">Your review</label>
+          <textarea id="reviewComment" placeholder="What did you think?"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="reviewName">Your name (optional)</label>
+          <input type="text" id="reviewName" placeholder="Anonymous">
+        </div>
+        <div class="form-row">
+          <label for="reviewEmail">Your email</label>
+          <input type="email" id="reviewEmail" placeholder="you@example.com" required>
+        </div>
+        <button class="btn-submit" onclick="submitReview()">Submit review</button>
+        <div class="form-help">Reviews are moderated before being published.</div>
+      </div>
+
+      <!-- Closed panel -->
+      <div class="tab-panel" data-panel="closed">
+        <p style="font-size: 13px; color: var(--muted);">Mark this business as no longer trading. We'll verify before removing it from the map.</p>
+        <div class="form-row">
+          <label for="closedNotes">Reason / details (optional)</label>
+          <textarea id="closedNotes" placeholder="e.g. Permanently closed since March, premises empty"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="closedEmail">Your email</label>
+          <input type="email" id="closedEmail" placeholder="you@example.com" required>
+        </div>
+        <button class="btn-submit" onclick="submitClosed()">Report as closed</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submit event modal -->
+<div class="modal-backdrop" id="eventModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+    <div class="modal-header">
+      <h2 id="eventModalTitle">Submit a local event</h2>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('eventModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label for="evTitle">Event title</label>
+        <input type="text" id="evTitle" placeholder="e.g. Community Carboot Sale">
+      </div>
+      <div class="form-row">
+        <label for="evType">Type</label>
+        <select id="evType">
+          <option value="carboot">Carboot / market</option>
+          <option value="charity">Charity event</option>
+          <option value="community">Community gathering</option>
+          <option value="music">Music / live performance</option>
+          <option value="sport">Sport</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="evDate">Date</label>
+        <input type="date" id="evDate">
+      </div>
+      <div class="form-row">
+        <label for="evTime">Time</label>
+        <input type="time" id="evTime">
+      </div>
+      <div class="form-row">
+        <label id="eventLocationLabel">Location</label>
+        <button type="button" class="btn-pick" onclick="startLocationPick()" aria-describedby="eventLocationLabel">
+          📍 Pick location on map
+        </button>
+        <div id="evLocationDisplay" class="ev-location-display" style="display:none;"></div>
+        <input type="hidden" id="evLat">
+        <input type="hidden" id="evLon">
+        <input type="hidden" id="evLocation" value="">
+      </div>
+      <div class="form-row">
+        <label for="evDesc">Description</label>
+        <textarea id="evDesc" placeholder="What's happening?"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="evEmail">Your email</label>
+        <input type="email" id="evEmail" placeholder="you@example.com" required>
+      </div>
+      <button class="btn-submit" onclick="submitEvent()">Submit event</button>
+      <div class="form-help">All event submissions are reviewed before going live.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Submit business modal -->
+<div class="modal-backdrop" id="businessModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="businessModalTitle">
+    <div class="modal-header">
+      <h2 id="businessModalTitle">Add a missing business</h2>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('businessModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label for="bizName">Business name</label>
+        <input type="text" id="bizName" placeholder="e.g. Smash bur6s">
+      </div>
+      <div class="form-row">
+        <label for="bizType">Type of business</label>
+        <select id="bizType">
+          <option value="food_drink">Food & Drink</option>
+          <option value="shopping">Shop</option>
+          <option value="services">Services</option>
+          <option value="health">Health</option>
+          <option value="education">Education</option>
+          <option value="community">Community</option>
+          <option value="leisure">Leisure</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="bizAddress">Address</label>
+        <input type="text" id="bizAddress" placeholder="e.g. 4 High Street, AB1 2CD">
+      </div>
+      <div class="form-row">
+        <label for="bizPhone">Phone (optional)</label>
+        <input type="text" id="bizPhone" placeholder="e.g. 0115 123 4567">
+      </div>
+      <div class="form-row">
+        <label for="bizWebsite">Website (optional)</label>
+        <input type="text" id="bizWebsite" placeholder="e.g. https://example.com">
+      </div>
+      <div class="form-row">
+        <label for="bizNotes">Description / notes (optional)</label>
+        <textarea id="bizNotes" placeholder="Anything else — opening hours, what they sell, etc."></textarea>
+      </div>
+      <div class="form-row">
+        <label for="bizEmail">Your email</label>
+        <input type="email" id="bizEmail" placeholder="you@example.com" required>
+      </div>
+      <button class="btn-submit" onclick="submitBusiness()">Submit business</button>
+      <div class="form-help">All submissions are reviewed before going live on the map.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Info modal -->
+<div class="modal-backdrop" id="infoModal">
+  <div class="modal quick-links-modal" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+    <div class="modal-header">
+      <h2 id="infoModalTitle">Quick links</h2>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('infoModal')">&times;</button>
+    </div>
+    <div class="modal-body quick-links-grid" id="quickLinksGrid">
+      <!-- Populated dynamically from config -->
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+// ---------------------------------------------------------------------------
+// Config — loaded from /api/config at boot
+// ---------------------------------------------------------------------------
+const GEOJSON_URL = "/api/places.geojson";
+let SITE_CONFIG = null;
+
+// ---------------------------------------------------------------------------
+// Icon set — Lucide-style outline glyphs on a 24x24 grid, 2px stroke.
+// SVG rather than emoji so they render identically everywhere, inherit the
+// theme colour, and scale with the type system.
+// ---------------------------------------------------------------------------
+const ICON_PATHS = {
+  utensils:   '<path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 0 0 2-2V2M6 2v20M18 2c-1.66 0-3 2.24-3 5v6h3v9"/>',
+  shopping:   '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  wrench:     '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/>',
+  health:     '<path d="M11 2h2v20h-2z"/><path d="M2 11h20v2H2z"/>',
+  education:  '<path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+  community:  '<path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/>',
+  tree:       '<path d="M12 2 6 10h3l-4 6h5v6h4v-6h5l-4-6h3Z"/>',
+  car:        '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/>',
+  help:       '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  package:    '<path d="M16.5 9.4 7.5 4.2"/><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  mailbox:    '<path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a5 5 0 0 1 10 0v8"/><path d="M12 9h10"/><path d="M18 9v4"/>',
+  bench:      '<path d="M3 10h18"/><path d="M4 10v8"/><path d="M20 10v8"/><path d="M3 14h18"/>',
+  trash:      '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  card:       '<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',
+  bolt:       '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>',
+  playground: '<path d="M4 21V7l16 14V7"/><path d="M4 7h16"/>',
+  pine:       '<path d="m12 2 4 6h-2.5l3 5H14l3 5H7l3-5H7.5l3-5H8Z"/><path d="M12 18v4"/>',
+  busstop:    '<path d="M12 2v20"/><path d="M8 6h8v6H8z"/>',
+  bus:        '<path d="M4 17V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11"/><path d="M4 11h16"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/>',
+  train:      '<rect width="14" height="14" x="5" y="3" rx="2"/><path d="M5 10h14"/><path d="m7 21 2-3M17 21l-2-3"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/>',
+  tram:       '<rect width="12" height="15" x="6" y="4" rx="2"/><path d="M6 10h12"/><path d="M12 2v2"/><path d="m8 21 1.5-2M16 21l-1.5-2"/>',
+  taxi:       '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 4h6v3H9z"/>',
+  calendar:   '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 2v4M16 2v4"/>',
+  checkAll:   '<path d="M3 6h18"/><path d="m3 12 3 3 5-5"/><path d="M14 15h7"/>',
+  clear:      '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+};
+
+// Renders an icon at a given size. `title` makes it announceable when it
+// carries meaning; decorative icons stay hidden from screen readers.
+function icon(name, size = 20, title = "") {
+  const path = ICON_PATHS[name] || ICON_PATHS.help;
+  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round"
+    ${title ? `role="img" aria-label="${escapeHtml(title)}"` : 'aria-hidden="true" focusable="false"'}
+    >${path}</svg>`;
+}
+
+const GROUPS = {
+  food_drink:       { label: "Food & Drink",   color: "#e63946", icon: "utensils" },
+  shopping:         { label: "Shops",          color: "#f4a261", icon: "shopping" },
+  services:         { label: "Services",       color: "#2a9d8f", icon: "wrench" },
+  health:           { label: "Health",         color: "#e76f51", icon: "health"  },
+  education:        { label: "Education",      color: "#9b5de5", icon: "education" },
+  community:        { label: "Community",      color: "#1d3557", icon: "community" },
+  leisure:          { label: "Leisure",        color: "#43aa8b", icon: "tree" },
+  transport:        { label: "Transport",      color: "#577590", icon: "car" },
+  other:            { label: "Other",          color: "#adb5bd", icon: "help"  },
+};
+
+// Amenity subcategories controlled by the "More" dropdown (unnamed infrastructure).
+// Named items with these subcategories still show under their normal group.
+const MORE_AMENITIES = {
+  parcel_locker:     { label: "Parcel Lockers",    icon: "package" },
+  post_box:          { label: "Post Boxes",        icon: "mailbox" },
+  bench:             { label: "Benches",           icon: "bench" },
+  waste_basket:      { label: "Waste Bins",        icon: "trash" },
+  atm:               { label: "ATMs",              icon: "card" },
+  charging_station:  { label: "Charging Stations", icon: "bolt" },
+  playground:        { label: "Playgrounds",       icon: "playground" },
+  park:              { label: "Parks",             icon: "pine" },
+  bus_stop:          { label: "Bus Stops",         icon: "busstop" },
+  bus_station:       { label: "Bus Stations",      icon: "bus" },
+  train_station:     { label: "Rail Stations",     icon: "train" },
+  tram_stop:         { label: "Tram Stops",        icon: "tram" },
+  taxi_rank:         { label: "Taxi Ranks",        icon: "taxi" },
+};
+const activeAmenities = new Set(); // which "More" subcategories are visible
+
+// Synonym map for smart search.
+// Searching for any key matches places where the OSM subcategory is in the value list.
+// e.g. "electrician" → matches anything tagged craft=electrician or shop=electrical.
+// Add more as you spot gaps.
+const SYNONYMS = {
+  electrician: ["electrician", "electrical"],
+  plumber:     ["plumber"],
+  builder:     ["builder", "building"],
+  mechanic:    ["car_repair", "car_parts", "tyres"],
+  garage:      ["car_repair", "fuel"],
+  food:        ["restaurant", "cafe", "fast_food", "pub", "bar", "ice_cream", "food_court"],
+  takeaway:    ["fast_food"],
+  drink:       ["pub", "bar", "biergarten"],
+  pub:         ["pub", "bar"],
+  coffee:      ["cafe"],
+  doctor:      ["doctors", "clinic"],
+  gp:          ["doctors", "clinic"],
+  dentist:     ["dentist"],
+  pharmacy:    ["pharmacy", "chemist"],
+  vet:         ["veterinary"],
+  hairdresser: ["hairdresser", "barber", "beauty"],
+  barber:      ["hairdresser", "barber"],
+  beauty:      ["beauty", "hairdresser", "nails", "massage"],
+  school:      ["school", "kindergarten", "college", "university"],
+  nursery:     ["kindergarten", "childcare"],
+  shop:        ["convenience", "supermarket", "clothes", "bakery", "butcher", "newsagent"],
+  shopping:    ["convenience", "supermarket", "clothes", "bakery", "butcher", "newsagent"],
+  groceries:   ["convenience", "supermarket", "greengrocer"],
+  church:      ["place_of_worship"],
+  worship:     ["place_of_worship"],
+  park:        ["park", "playground"],
+  playground:  ["playground"],
+  gym:         ["fitness_centre", "sports_centre"],
+  parking:     ["parking"],
+  postbox:     ["post_box"],
+  bench:       ["bench"],
+  charity:     ["charity", "social_facility"],
+  community:   ["community_centre", "social_facility"],
+  parcel:      ["parcel_locker", "post_office", "parcel_locker"],
+  courier:     ["parcel_locker", "post_office"],
+  inpost:      ["parcel_locker"],
+  evri:        ["parcel_locker"],
+  dpd:         ["parcel_locker"],
+  amazon:      ["parcel_locker"],
+  post:        ["post_office", "post_box"],
+  bank:        ["bank", "atm"],
+  bus:         ["bus_stop", "bus_station"],
+  train:       ["train_station"],
+  station:     ["train_station", "bus_station", "tram_stop"],
+  tram:        ["tram_stop"],
+  taxi:        ["taxi_rank"],
+  transport:   ["bus_stop", "bus_station", "train_station", "tram_stop", "taxi_rank"],
+  cash:        ["bank", "atm"],
+  petrol:      ["fuel"],
+  fuel:        ["fuel", "charging_station"],
+  charging:    ["charging_station"],
+  ev:          ["charging_station"],
+  tattoo:      ["tattoo"],
+  pizza:       ["fast_food", "restaurant"],
+  chinese:     ["fast_food", "restaurant"],
+  indian:      ["fast_food", "restaurant"],
+  kebab:       ["fast_food"],
+};
+
+// Build a reverse lookup once: subcategory → [synonym keys that include it]
+const SUBCATEGORY_KEYWORDS = {};
+for (const [key, subs] of Object.entries(SYNONYMS)) {
+  for (const sub of subs) {
+    if (!SUBCATEGORY_KEYWORDS[sub]) SUBCATEGORY_KEYWORDS[sub] = new Set();
+    SUBCATEGORY_KEYWORDS[sub].add(key);
+  }
+}
+
+// Day-code expansion for opening_hours
+const DAY_NAMES = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Public hols" };
+const DAY_INDEX = { Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6, Su: 0 };
+
+/**
+ * Format an OSM opening_hours string into something readable.
+ * Best-effort — handles common patterns, falls back to raw text.
+ * Examples handled:
+ *   "Mo-Fr 09:00-17:30"           → "Mon–Fri: 09:00–17:30"
+ *   "Mo-Fr 09:00-17:30; Sa 10:00-16:00" → multi-line
+ *   "24/7"                         → "Open 24/7"
+ */
+function formatHours(raw) {
+  if (!raw) return null;
+  if (raw.trim() === "24/7") return "Open 24/7";
+
+  const rules = raw.split(";").map(s => s.trim()).filter(Boolean);
+  const out = [];
+  for (const rule of rules) {
+    const m = rule.match(/^([A-Za-z,\-]+)\s+([\d:,\-\s]+)$/);
+    if (!m) { out.push(rule); continue; }
+    const days = m[1].replace(/Mo|Tu|We|Th|Fr|Sa|Su|PH/g, code => DAY_NAMES[code] || code).replace(/-/g, "–");
+    const times = m[2].trim().replace(/-/g, "–");
+    out.push(`${days}: ${times}`);
+  }
+  return out.join("\n");
+}
+
+/**
+ * Decide if a place is open *now* based on its raw OSM opening_hours.
+ * Conservative: only returns true/false for cleanly-parseable rules,
+ * otherwise null (caller hides the badge).
+ */
+function isOpenNow(raw) {
+  if (!raw) return null;
+  if (raw.trim() === "24/7") return true;
+  const now = new Date();
+  const today = now.getDay();           // 0 = Sunday
+  const minsNow = now.getHours() * 60 + now.getMinutes();
+
+  const rules = raw.split(";").map(s => s.trim()).filter(Boolean);
+  for (const rule of rules) {
+    const m = rule.match(/^([A-Za-z,\-]+)\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+    if (!m) continue;
+    const dayPart = m[1];
+    const start = parseInt(m[2]) * 60 + parseInt(m[3]);
+    const end   = parseInt(m[4]) * 60 + parseInt(m[5]);
+
+    // Expand day spec like "Mo-Fr" or "Sa" or "Mo,We,Fr"
+    const days = new Set();
+    for (const part of dayPart.split(",")) {
+      const range = part.split("-");
+      if (range.length === 2 && DAY_INDEX[range[0]] !== undefined && DAY_INDEX[range[1]] !== undefined) {
+        let a = DAY_INDEX[range[0]], b = DAY_INDEX[range[1]];
+        // Walk forward modulo 7
+        for (let i = 0; i < 7; i++) {
+          const d = (a + i) % 7;
+          days.add(d);
+          if (d === b) break;
+        }
+      } else if (DAY_INDEX[part] !== undefined) {
+        days.add(DAY_INDEX[part]);
+      }
+    }
+    if (days.has(today) && minsNow >= start && minsNow < end) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Map setup — config-driven, called by boot()
+// ---------------------------------------------------------------------------
+let map = null;
+
+function initMap() {
+  const center = SITE_CONFIG.center || [53.0, -1.0];
+  const zoom = SITE_CONFIG.default_zoom || 14;
+  const polygon = SITE_CONFIG.boundary_polygon || [];
+
+  let mapOptions = {
+    zoomControl: true,
+    minZoom: SITE_CONFIG.min_zoom || 13,
+  };
+
+  if (polygon.length > 2) {
+    const lats = polygon.map(p => p[0]);
+    const lons = polygon.map(p => p[1]);
+    const pad = 0.015;
+    mapOptions.maxBounds = L.latLngBounds(
+      [Math.min(...lats) - pad, Math.min(...lons) - pad],
+      [Math.max(...lats) + pad, Math.max(...lons) + pad]
+    );
+    mapOptions.maxBoundsViscosity = 0.8;
+  }
+
+  map = L.map("map", mapOptions).setView(center, zoom);
+
+  if (polygon.length > 2) {
+    const worldOuter = [[-90,-180],[-90,180],[90,180],[90,-180]];
+    L.polygon([worldOuter, polygon], {
+      fillColor: "#d0d0d0", fillOpacity: 0.55,
+      stroke: true, color: "#999", weight: 2, dashArray: "6 4",
+      interactive: false,
+    }).addTo(map);
+  }
+
+  // Tile layers. Providers that need no API key are used by default.
+  const cartoKey = SITE_CONFIG.carto_api_key
+                || (SITE_CONFIG.tiles && SITE_CONFIG.tiles.carto_api_key) || "";
+  const baseLayers = {};
+
+  if (cartoKey) {
+    baseLayers["Light"] = L.tileLayer(
+      `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`,
+      { maxZoom: 19, subdomains: "abcd",
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a>' });
+  } else {
+    baseLayers["Light"] = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 16, attribution: 'Tiles © Esri' });
+  }
+
+  baseLayers["Standard"] = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  });
+  baseLayers["Satellite"] = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, attribution: 'Tiles © Esri' });
+
+  const defaultLayer = SITE_CONFIG.default_layer
+                    || (SITE_CONFIG.tiles && SITE_CONFIG.tiles.default) || "Light";
+  (baseLayers[defaultLayer] || baseLayers["Light"]).addTo(map);
+  L.control.layers(baseLayers, null, { position: "topright", collapsed: false }).addTo(map);
+
+  cluster = L.markerClusterGroup({ maxClusterRadius: 50, spiderfyOnMaxZoom: true });
+  map.addLayer(cluster);
+
+  eventMarkers = L.layerGroup().addTo(map);
+
+  attachLocationPicker();
+}
+
+let cluster = null;
+let eventMarkers = null;
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let allFeatures = [];
+const activeGroups = new Set(Object.keys(GROUPS));
+let searchTerm = "";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function makeIcon(group) {
+  const cfg = GROUPS[group] || GROUPS.other;
+  return L.divIcon({
+    className: "custom-pin",
+    html: `<div style="
+      background:${cfg.color};
+      width:28px;height:28px;border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 4px rgba(0,0,0,0.3);
+      border:2px solid white;
+    "><span style="transform:rotate(45deg);display:flex;color:#fff;">${icon(cfg.icon, 15)}</span></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28],
+  });
+}
+
+function popupHtml(p, lat, lon) {
+  const cfg = GROUPS[p.group_name] || GROUPS.other;
+  const lines = [];
+
+  // Name + open-now badge
+  const open = isOpenNow(p.opening_hours);
+  let badge = "";
+  if (open === true)  badge = '<span class="badge badge-open">Open now</span>';
+  if (open === false) badge = '<span class="badge badge-closed">Closed</span>';
+  lines.push(`<div class="popup-name">${escapeHtml(p.name || "(unnamed)")}${badge}</div>`);
+
+  lines.push(`<div class="popup-cat">${cfg.label} · ${escapeHtml(p.subcategory || "")}</div>`);
+
+  // FSA hygiene rating badge (food places only)
+  if (p.hygiene_rating) lines.push(hygieneBadge(p.hygiene_rating));
+
+  if (p.address)       lines.push(`<div class="popup-row">📍 ${escapeHtml(p.address)}</div>`);
+  if (p.phone)         lines.push(`<div class="popup-row">📞 <a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a></div>`);
+  if (p.website)       lines.push(`<div class="popup-row">🌐 <a href="${escapeHtml(p.website)}" target="_blank" rel="noopener">Website</a></div>`);
+  if (p.opening_hours) {
+    const formatted = formatHours(p.opening_hours);
+    lines.push(`<div class="popup-hours">🕒 ${escapeHtml(formatted || p.opening_hours)}</div>`);
+  }
+
+  lines.push(`<div class="popup-actions">
+    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" rel="noopener">Directions</a>
+    <a href="#" onclick="openReviewModal(${p.id}); return false;">Review</a>
+    <a href="#" onclick="openReportModal(${p.id}); return false;">Report</a>
+  </div>`);
+  lines.push(`<div class="popup-reviews" id="reviews-${p.id}"><div style="font-size:11px;color:var(--muted);">Loading reviews...</div></div>`);
+  return lines.join("");
+}
+
+/**
+ * Render an FSA Food Hygiene Rating badge.
+ * Numeric ratings 0–5 get coloured badges; non-numeric ratings
+ * (AwaitingInspection, Exempt, etc.) get a neutral grey badge.
+ */
+function hygieneBadge(rating) {
+  const cls = /^[0-5]$/.test(rating) ? `hygiene-${rating}` : "hygiene-na";
+  const label = /^[0-5]$/.test(rating)
+    ? `Hygiene rating: ${rating}/5`
+    : `Hygiene: ${rating.replace(/([A-Z])/g, " $1").trim()}`;
+  return `<div class="hygiene ${cls}" title="Food Standards Agency rating">🍴 ${escapeHtml(label)}</div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function openReviewModal(placeId) {
+  openReportModal(placeId);
+  switchTab("review");
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function render() {
+  cluster.clearLayers();
+  const term = searchTerm.trim().toLowerCase();
+  let shown = 0;
+
+  for (const f of allFeatures) {
+    const p = f.properties;
+
+    // Skip anything without a real name — these render as "(unnamed)" and
+    // add noise without telling the user anything useful.
+    if (!p.name || !p.name.trim()) continue;
+
+    // Parcel lockers & other "More" amenities → controlled by the dropdown,
+    // regardless of whether they have a name
+    const isMoreAmenity = (p.subcategory in MORE_AMENITIES);
+    if (isMoreAmenity) {
+      if (!activeAmenities.has(p.subcategory)) continue;
+    } else {
+      if (!activeGroups.has(p.group_name)) continue;
+    }
+
+    if (term && !matchesSearch(p, term)) continue;
+
+    const [lon, lat] = f.geometry.coordinates;
+    const marker = L.marker([lat, lon], { icon: makeIcon(p.group_name) });
+    marker.bindPopup(popupHtml(p, lat, lon));
+    marker.on("popupopen", () => loadReviews(p.id));
+    cluster.addLayer(marker);
+    shown++;
+  }
+  const statusEl = document.getElementById("status");
+  statusEl.textContent = shown === 1 ? "1 place shown" : `${shown} places shown`;
+
+  // Recoverable empty state rather than a silently blank map
+  let empty = document.getElementById("mapEmpty");
+  if (shown === 0 && !term) {
+    if (!empty) {
+      empty = document.createElement("div");
+      empty.id = "mapEmpty";
+      empty.className = "map-empty";
+      empty.setAttribute("role", "status");
+      empty.innerHTML = `
+        <p class="map-empty-title">Nothing to show</p>
+        <p class="map-empty-body">All categories are switched off.</p>
+        <button class="btn-empty" type="button">Show all categories</button>`;
+      empty.querySelector("button").addEventListener("click", () => {
+        Object.keys(GROUPS).forEach(k => activeGroups.add(k));
+        buildChips();
+        render();
+      });
+      document.getElementById("map-area").appendChild(empty);
+    }
+  } else if (shown === 0 && term) {
+    if (empty) empty.remove();
+  } else if (empty) {
+    empty.remove();
+  }
+}
+
+/**
+ * Smart search: matches against name, subcategory, group name, and synonym map.
+ * "electrician" matches anything with subcategory in SYNONYMS.electrician.
+ */
+function matchesSearch(p, term) {
+  if ((p.name || "").toLowerCase().includes(term)) return true;
+  if ((p.subcategory || "").toLowerCase().includes(term)) return true;
+  if ((p.group_name || "").toLowerCase().includes(term)) return true;
+
+  // Check synonym map: if user typed a known keyword, match by subcategory
+  if (SYNONYMS[term] && p.subcategory && SYNONYMS[term].includes(p.subcategory)) return true;
+
+  // Reverse: does this place's subcategory have any synonym keys that contain the term?
+  const keywords = SUBCATEGORY_KEYWORDS[p.subcategory];
+  if (keywords) {
+    for (const kw of keywords) {
+      if (kw.includes(term)) return true;
+    }
+  }
+  return false;
+}
+
+function buildChips() {
+  const counts = {};
+  for (const f of allFeatures) {
+    if (!f.properties.name || !f.properties.name.trim()) continue;
+    const g = f.properties.group_name;
+    counts[g] = (counts[g] || 0) + 1;
+  }
+
+  const container = document.getElementById("chips");
+  container.innerHTML = "";
+
+  // Select All + Clear pair — compact inline text buttons
+  const toggleRow = document.createElement("div");
+  toggleRow.className = "toggle-row";
+
+  const toggleAllBtn = document.createElement("button");
+  toggleAllBtn.className = "filter-btn";
+  toggleAllBtn.title = "Select all / deselect all";
+
+  const renderToggleLabel = () => {
+    const groupKeys = Object.keys(GROUPS).filter(k => counts[k]);
+    const amenityKeys = Object.keys(MORE_AMENITIES);
+    const everythingOn = groupKeys.every(k => activeGroups.has(k))
+                      && amenityKeys.every(k => activeAmenities.has(k))
+                      && map.hasLayer(eventMarkers);
+    toggleAllBtn.innerHTML = everythingOn
+      ? `<span class="filter-ico">${icon("checkAll", 16)}</span> Deselect All`
+      : `<span class="filter-ico">${icon("checkAll", 16)}</span> Select All`;
+  };
+  renderToggleLabel();
+
+  toggleAllBtn.onclick = () => {
+    const groupKeys = Object.keys(GROUPS).filter(k => counts[k]);
+    const amenityKeys = Object.keys(MORE_AMENITIES);
+    const everythingOn = groupKeys.every(k => activeGroups.has(k))
+                      && amenityKeys.every(k => activeAmenities.has(k))
+                      && map.hasLayer(eventMarkers);
+    if (everythingOn) {
+      activeGroups.clear();
+      activeAmenities.clear();
+      if (map.hasLayer(eventMarkers)) map.removeLayer(eventMarkers);
+    } else {
+      groupKeys.forEach(k => activeGroups.add(k));
+      amenityKeys.forEach(k => activeAmenities.add(k));
+      if (!map.hasLayer(eventMarkers)) map.addLayer(eventMarkers);
+    }
+    buildChips();
+    render();
+  };
+  toggleRow.appendChild(toggleAllBtn);
+
+  // Clear button
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "filter-btn";
+  resetBtn.innerHTML = `<span class="filter-ico">${icon("clear", 16)}</span> Clear`;
+  resetBtn.title = "Clear all active filters";
+  resetBtn.onclick = () => {
+    activeGroups.clear();
+    activeAmenities.clear();
+    if (map.hasLayer(eventMarkers)) map.removeLayer(eventMarkers);
+    buildChips();
+    render();
+  };
+  toggleRow.appendChild(resetBtn);
+  container.appendChild(toggleRow);
+
+  // Category chips
+  for (const [key, cfg] of Object.entries(GROUPS)) {
+    if (!counts[key]) continue;
+    const btn = document.createElement("button");
+    btn.className = "chip" + (activeGroups.has(key) ? " active" : "");
+    btn.innerHTML = `<span class="chip-icon">${icon(cfg.icon)}</span>`
+      + `<span class="chip-label">${cfg.label}</span>`
+      + `<span class="count">${counts[key]}</span>`;
+    btn.onclick = () => {
+      if (activeGroups.has(key)) activeGroups.delete(key);
+      else activeGroups.add(key);
+      btn.classList.toggle("active");
+      render();
+    };
+    container.appendChild(btn);
+  }
+
+  // Events chip — active state reflects whether layer is currently on map
+  const evBtn = document.createElement("button");
+  const eventsVisibleNow = map.hasLayer(eventMarkers);
+  evBtn.className = "chip" + (eventsVisibleNow ? " active" : "");
+  evBtn.innerHTML = `<span class="chip-icon">${icon("calendar")}</span><span class="chip-label">Events</span>`;
+  evBtn.onclick = () => {
+    if (map.hasLayer(eventMarkers)) {
+      map.removeLayer(eventMarkers);
+      evBtn.classList.remove("active");
+    } else {
+      map.addLayer(eventMarkers);
+      evBtn.classList.add("active");
+    }
+  };
+  container.appendChild(evBtn);
+
+  // Amenity chips (previously in "More" dropdown) — now inline in the main list
+  for (const [subcat, cfg] of Object.entries(MORE_AMENITIES)) {
+    // Count how many of this subcategory exist
+    const subcatCount = allFeatures.filter(f =>
+      f.properties.subcategory === subcat &&
+      f.properties.name && f.properties.name.trim()).length;
+    if (!subcatCount) continue;
+    const btn = document.createElement("button");
+    btn.className = "chip" + (activeAmenities.has(subcat) ? " active" : "");
+    btn.innerHTML = `<span class="chip-icon">${icon(cfg.icon)}</span>`
+      + `<span class="chip-label">${cfg.label}</span>`
+      + `<span class="count">${subcatCount}</span>`;
+    btn.onclick = () => {
+      if (activeAmenities.has(subcat)) activeAmenities.delete(subcat);
+      else activeAmenities.add(subcat);
+      btn.classList.toggle("active");
+      render();
+    };
+    container.appendChild(btn);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Modals & submissions
+// ---------------------------------------------------------------------------
+let currentReportPlaceId = null;
+let currentReviewStars = 0;
+
+function openReportModal(placeId) {
+  currentReportPlaceId = placeId;
+  const place = allFeatures.find(f => f.properties.id === placeId);
+  const name = place ? (place.properties.name || "(unnamed)") : "this place";
+  document.getElementById("reportModalTitle").textContent = `Report: ${name}`;
+  // Reset forms
+  document.getElementById("editValue").value = "";
+  document.getElementById("editNotes").value = "";
+  document.getElementById("editEmail").value = "";
+  document.getElementById("reviewComment").value = "";
+  document.getElementById("reviewName").value = "";
+  document.getElementById("reviewEmail").value = "";
+  document.getElementById("closedNotes").value = "";
+  document.getElementById("closedEmail").value = "";
+  currentReviewStars = 0;
+  paintStars(0);
+  switchTab("edit");
+  document.getElementById("reportModal").classList.add("open");
+}
+
+function openEventModal() {
+  // Reset picker state
+  document.getElementById("evLocationDisplay").style.display = "none";
+  document.getElementById("evLat").value = "";
+  document.getElementById("evLon").value = "";
+  document.getElementById("evLocation").value = "";
+  document.getElementById("eventModal").classList.add("open");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+// Tab switching
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+});
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.dataset.panel === name));
+}
+
+// Star picker
+document.querySelectorAll("#starPicker .star").forEach(star => {
+  star.addEventListener("click", () => {
+    currentReviewStars = parseInt(star.dataset.value);
+    paintStars(currentReviewStars);
+  });
+});
+function paintStars(n) {
+  document.querySelectorAll("#starPicker .star").forEach(s => {
+    s.classList.toggle("filled", parseInt(s.dataset.value) <= n);
+  });
+}
+
+// Submission handlers — POST to /api/submit
+function validEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function postSubmission(type, payload, placeId) {
+  try {
+    const r = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, payload, place_id: placeId || null }),
+    });
+    if (!r.ok) throw new Error(`Server returned ${r.status}`);
+    return true;
+  } catch (e) {
+    console.error("Submission failed:", e);
+    showToast("Submission failed — please try again");
+    return false;
+  }
+}
+
+async function submitEdit() {
+  const field = document.getElementById("editField").value;
+  const value = document.getElementById("editValue").value.trim();
+  const notes = document.getElementById("editNotes").value.trim();
+  const email = document.getElementById("editEmail").value.trim();
+  if (!value) { showToast("Please enter a value"); return; }
+  if (!validEmail(email)) { showToast("Please enter a valid email"); return; }
+  if (await postSubmission("edit", { field, value, notes, submitter_email: email }, currentReportPlaceId)) {
+    closeModal("reportModal");
+    showToast("Thanks — your edit will be reviewed");
+  }
+}
+
+async function submitReview() {
+  const comment = document.getElementById("reviewComment").value.trim();
+  const name = document.getElementById("reviewName").value.trim() || "Anonymous";
+  const email = document.getElementById("reviewEmail").value.trim();
+  if (currentReviewStars === 0) { showToast("Please pick a star rating"); return; }
+  if (!comment) { showToast("Please write a short review"); return; }
+  if (!validEmail(email)) { showToast("Please enter a valid email"); return; }
+  if (await postSubmission("review", { stars: currentReviewStars, comment, name, submitter_email: email }, currentReportPlaceId)) {
+    closeModal("reportModal");
+    showToast("Thanks — your review will be moderated");
+  }
+}
+
+async function submitClosed() {
+  const notes = document.getElementById("closedNotes").value.trim();
+  const email = document.getElementById("closedEmail").value.trim();
+  if (!validEmail(email)) { showToast("Please enter a valid email"); return; }
+  if (await postSubmission("closed", { notes, submitter_email: email }, currentReportPlaceId)) {
+    closeModal("reportModal");
+    showToast("Thanks — we'll verify and update");
+  }
+}
+
+async function submitEvent() {
+  const lat = document.getElementById("evLat").value;
+  const lon = document.getElementById("evLon").value;
+  if (!lat || !lon) {
+    showToast("Please pick a location on the map");
+    return;
+  }
+  const email = document.getElementById("evEmail").value.trim();
+  const ev = {
+    title:    document.getElementById("evTitle").value.trim(),
+    type:     document.getElementById("evType").value,
+    date:     document.getElementById("evDate").value,
+    time:     document.getElementById("evTime").value,
+    location: document.getElementById("evLocation").value,
+    lat:      parseFloat(lat),
+    lon:      parseFloat(lon),
+    desc:     document.getElementById("evDesc").value.trim(),
+    submitter_email: email,
+  };
+  if (!ev.title || !ev.date) {
+    showToast("Title and date are required");
+    return;
+  }
+  if (!validEmail(email)) { showToast("Please enter a valid email"); return; }
+  if (await postSubmission("event", ev, null)) {
+    ["evTitle","evDate","evTime","evDesc","evEmail"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("evLocationDisplay").style.display = "none";
+    document.getElementById("evLat").value = "";
+    document.getElementById("evLon").value = "";
+    document.getElementById("evLocation").value = "";
+    closeModal("eventModal");
+    showToast("Thanks — your event will be reviewed");
+  }
+}
+
+function openBusinessModal() {
+  document.getElementById("businessModal").classList.add("open");
+}
+
+function openInfoModal() {
+  document.getElementById("infoModal").classList.add("open");
+}
+
+async function submitBusiness() {
+  const biz = {
+    name:     document.getElementById("bizName").value.trim(),
+    group:    document.getElementById("bizType").value,
+    address:  document.getElementById("bizAddress").value.trim(),
+    phone:    document.getElementById("bizPhone").value.trim(),
+    website:  document.getElementById("bizWebsite").value.trim(),
+    notes:    document.getElementById("bizNotes").value.trim(),
+    submitter_email: document.getElementById("bizEmail").value.trim(),
+  };
+  if (!biz.name || !biz.address) {
+    showToast("Name and address are required");
+    return;
+  }
+  if (!validEmail(biz.submitter_email)) { showToast("Please enter a valid email"); return; }
+  if (await postSubmission("new_business", biz, null)) {
+    ["bizName","bizAddress","bizPhone","bizWebsite","bizNotes","bizEmail"].forEach(id => document.getElementById(id).value = "");
+    closeModal("businessModal");
+    showToast("Thanks — we'll review and add it to the map");
+  }
+}
+
+// Toast
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ---------------------------------------------------------------------------
+// Reviews in popups
+// ---------------------------------------------------------------------------
+async function loadReviews(placeId) {
+  const el = document.getElementById(`reviews-${placeId}`);
+  if (!el) return;
+  try {
+    const r = await fetch(`/api/reviews/${placeId}`);
+    const reviews = await r.json();
+    if (reviews.length === 0) {
+      el.innerHTML = "";
+      return;
+    }
+    el.innerHTML = `<div class="popup-reviews-title">Reviews</div>` +
+      reviews.map(rv => `
+        <div class="popup-review">
+          <span class="stars">${"★".repeat(rv.stars)}${"☆".repeat(5 - rv.stars)}</span>
+          <div class="comment">${escapeHtml(rv.comment)}</div>
+          <div class="meta">${escapeHtml(rv.name)} · ${rv.date}</div>
+        </div>
+      `).join("");
+  } catch (e) {
+    el.innerHTML = "";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Event location picker (click-on-map)
+// ---------------------------------------------------------------------------
+let pickingLocation = false;
+
+function startLocationPick() {
+  closeModal("eventModal");
+  pickingLocation = true;
+  document.getElementById("map").classList.add("map-picking");
+  document.getElementById("mapPickBanner").style.display = "block";
+}
+
+// Attached from initMap() once the map object exists
+function attachLocationPicker() {
+  map.on("click", async function(e) {
+    if (!pickingLocation) return;
+    pickingLocation = false;
+    document.getElementById("map").classList.remove("map-picking");
+    document.getElementById("mapPickBanner").style.display = "none";
+
+    const lat = e.latlng.lat.toFixed(6);
+    const lon = e.latlng.lng.toFixed(6);
+    document.getElementById("evLat").value = lat;
+    document.getElementById("evLon").value = lon;
+
+    // Reverse geocode via postcodes.io to get a readable address
+    let locationText = `${lat}, ${lon}`;
+    try {
+      const r = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`);
+      const data = await r.json();
+      if (data.result && data.result.length > 0) {
+        const pc = data.result[0];
+        locationText = [pc.admin_ward, pc.postcode].filter(Boolean).join(", ");
+      }
+    } catch(e) { /* keep coords as fallback */ }
+
+    document.getElementById("evLocation").value = locationText;
+    document.getElementById("evLocationDisplay").textContent = `📍 ${locationText}`;
+    document.getElementById("evLocationDisplay").style.display = "block";
+
+    // Reopen the event modal
+    document.getElementById("eventModal").classList.add("open");
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Event markers on map
+// ---------------------------------------------------------------------------
+
+function makeEventIcon() {
+  return L.divIcon({
+    className: "custom-pin",
+    html: `<div style="
+      background:var(--accent, #e07b00);
+      width:30px;height:30px;border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 4px rgba(0,0,0,0.3);
+      border:2px solid white;
+    "><span style="transform:rotate(45deg);display:flex;color:#fff;">${icon("calendar", 16)}</span></div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -30],
+  });
+}
+
+async function loadEventMarkers() {
+  try {
+    const r = await fetch("/api/events");
+    const events = await r.json();
+    eventMarkers.clearLayers();
+    for (const ev of events) {
+      if (!ev.lat || !ev.lon) continue;
+      const dateStr = ev.date ? new Date(ev.date + "T00:00").toLocaleDateString("en-GB", {weekday:"short", day:"numeric", month:"short"}) : "";
+      const popup = `
+        <div class="popup-name">${escapeHtml(ev.title)}</div>
+        <div class="popup-cat">${escapeHtml(ev.type_label)} · ${dateStr}${ev.time ? " · " + escapeHtml(ev.time) : ""}</div>
+        ${ev.location ? `<div class="popup-row">📍 ${escapeHtml(ev.location)}</div>` : ""}
+        ${ev.desc ? `<div class="popup-row">${escapeHtml(ev.desc)}</div>` : ""}
+      `;
+      L.marker([ev.lat, ev.lon], { icon: makeEventIcon() }).bindPopup(popup).addTo(eventMarkers);
+    }
+  } catch(e) { console.error("Failed to load events:", e); }
+}
+
+// Close modals on backdrop click
+document.querySelectorAll(".modal-backdrop").forEach(bd => {
+  bd.addEventListener("click", e => { if (e.target === bd) bd.classList.remove("open"); });
+});
+
+// Lighten (+) or darken (-) a hex colour by a percentage
+// WCAG relative luminance, used to pick text opacity that stays readable
+// whichever theme colour the sidebar is using.
+function relLuminance(hex) {
+  const h = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) / 255);
+  const f = c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+function shadeColor(hex, percent) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.min(255, Math.max(0, (n >> 16) + amt));
+  const g = Math.min(255, Math.max(0, ((n >> 8) & 0x00FF) + amt));
+  const b = Math.min(255, Math.max(0, (n & 0x0000FF) + amt));
+  return "#" + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+
+// ---------------------------------------------------------------------------
+// Boot — load config, then initialise everything
+// ---------------------------------------------------------------------------
+async function boot() {
+  // Load site config
+  try {
+    const r = await fetch("/api/config");
+    if (!r.ok) { window.location.href = "/"; return; } // redirect to setup
+    SITE_CONFIG = await r.json();
+    if (SITE_CONFIG.setup_required) { window.location.href = "/"; return; }
+  } catch(e) {
+    console.error("Failed to load config:", e);
+    SITE_CONFIG = { site_name: "Local Map", center: [53.0, -1.0], default_zoom: 14, min_zoom: 13, boundary_polygon: [], theme_color: "#35425c", logo: "logo.png", quick_links: [] };
+  }
+
+  // Apply config to page
+  document.title = SITE_CONFIG.site_name;
+  document.getElementById("siteName").textContent = SITE_CONFIG.site_name;
+  document.getElementById("siteTagline").innerHTML = SITE_CONFIG.tagline || "";
+  const logoEl = document.getElementById("siteLogo");
+  if (SITE_CONFIG.logo) { logoEl.src = SITE_CONFIG.logo; logoEl.alt = SITE_CONFIG.site_name; }
+
+  // Apply theme (colours + fonts) from config
+  const theme = SITE_CONFIG.theme || {};
+  const root = document.documentElement;
+  const primary = theme.primary || SITE_CONFIG.theme_color || "#35425c";
+  root.style.setProperty("--primary", primary);
+  root.style.setProperty("--primary-light", theme.primary_light || shadeColor(primary, 20));
+  root.style.setProperty("--primary-dark", theme.primary_dark || shadeColor(primary, -20));
+
+  const accent = SITE_CONFIG.accent_color || theme.accent;
+  if (accent) root.style.setProperty("--accent", accent);
+
+  // Full palette from the chosen theme — surfaces, text and borders shift with
+  // the primary colour rather than staying fixed.
+  const tokens = SITE_CONFIG.theme_tokens || {};
+  const tokenMap = {
+    surface: "--bg", canvas: "--canvas", ink: "--fg",
+    muted: "--muted", border: "--border",
+  };
+  for (const [key, cssVar] of Object.entries(tokenMap)) {
+    if (tokens[key]) root.style.setProperty(cssVar, tokens[key]);
+  }
+
+  // Sidebar background style
+  const dark = shadeColor(primary, -20);
+  const light = shadeColor(primary, 20);
+  const sidebarStyle = SITE_CONFIG.sidebar_style || "gradient";
+  const sidebarBg = {
+    gradient:  `linear-gradient(180deg, ${dark} 0%, ${primary} 60%, ${light} 100%)`,
+    solid:     primary,
+    deep:      shadeColor(primary, -35),
+    diagonal:  `linear-gradient(135deg, ${dark} 0%, ${primary} 55%, ${light} 100%)`,
+    accentmix: `linear-gradient(180deg, ${dark} 0%, ${primary} 70%, ${accent || light} 160%)`,
+  }[sidebarStyle] || primary;
+  root.style.setProperty("--sidebar-bg", sidebarBg);
+  // Ring around the active-state dot, blended to sit on the sidebar
+  root.style.setProperty("--sidebar-dot-ring", shadeColor(primary, 12));
+
+  // Resting chip text needs more opacity on a light sidebar than a dark one to
+  // clear 4.5:1, so derive it from the primary's luminance rather than fixing it.
+  const pl = relLuminance(primary);
+  const idleAlpha  = pl > 0.13 ? 1 : pl > 0.09 ? 0.86 : 0.72;
+  const hoverAlpha = Math.min(1, idleAlpha + 0.08);
+  root.style.setProperty("--chip-idle", `rgba(255,255,255,${idleAlpha})`);
+  root.style.setProperty("--chip-hover", `rgba(255,255,255,${hoverAlpha})`);
+
+  // Font: load from Google Fonts and apply site-wide
+  const fontFamily = SITE_CONFIG.font_family || theme.font_family;
+  if (fontFamily) {
+    root.style.setProperty("--font", `'${fontFamily}', system-ui, sans-serif`);
+    document.body.style.fontFamily = `'${fontFamily}', system-ui, sans-serif`;
+    if (fontFamily !== "Roboto") {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family="
+                + fontFamily.replace(/ /g, "+")
+                + ":wght@400;500;600;700&display=swap";
+      document.head.appendChild(link);
+    }
+  }
+  if (theme.font_url) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = theme.font_url;
+    document.head.appendChild(link);
+  }
+
+  // Build social links — inline SVG so they inherit colour and need no requests
+  const SOCIAL_ICONS = {
+    facebook: '<path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99A10 10 0 0 0 22 12Z"/>',
+    instagram: '<path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07c-1.28.06-2.15.26-2.91.56-.79.3-1.46.72-2.13 1.38A5.9 5.9 0 0 0 .63 4.14c-.3.76-.5 1.63-.56 2.91C.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.28.26 2.15.56 2.91.3.79.72 1.46 1.38 2.13a5.9 5.9 0 0 0 2.13 1.38c.76.3 1.63.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.28-.06 2.15-.26 2.91-.56a5.9 5.9 0 0 0 2.13-1.38 5.9 5.9 0 0 0 1.38-2.13c.3-.76.5-1.63.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.28-.26-2.15-.56-2.91a5.9 5.9 0 0 0-1.38-2.13A5.9 5.9 0 0 0 19.86.63c-.76-.3-1.63-.5-2.91-.56C15.67.01 15.26 0 12 0Zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm7.85-10.4a1.44 1.44 0 1 1-2.88 0 1.44 1.44 0 0 1 2.88 0Z"/>',
+    x: '<path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.66l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.11l11.97 15.64Z"/>',
+    email: '<path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4.24-8 4.99-8-4.99V6l8 5 8-5v2.24Z"/>',
+  };
+  const SOCIAL_LABELS = {
+    facebook: "Facebook", instagram: "Instagram", x: "X", email: "Email",
+  };
+
+  const socialWrap = document.getElementById("socialLinks");
+  if (socialWrap) {
+    socialWrap.innerHTML = "";
+    const social = SITE_CONFIG.social || {};
+    for (const platform of ["facebook", "instagram", "x", "email"]) {
+      const value = (social[platform] || "").trim();
+      if (!value) continue;
+      const href = platform === "email"
+        ? (value.startsWith("mailto:") ? value : "mailto:" + value)
+        : value;
+      const a = document.createElement("a");
+      a.className = "cta-social";
+      a.href = href;
+      a.title = SOCIAL_LABELS[platform];
+      a.setAttribute("aria-label", SOCIAL_LABELS[platform]);
+      if (platform !== "email") { a.target = "_blank"; a.rel = "noopener"; }
+      a.innerHTML = `<span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOCIAL_ICONS[platform]}</svg></span>`;
+      socialWrap.appendChild(a);
+    }
+  }
+
+  // Build Quick Links
+  const grid = document.getElementById("quickLinksGrid");
+  if (grid) {
+    grid.innerHTML = "";
+    for (const link of SITE_CONFIG.quick_links || []) {
+      const a = document.createElement("a");
+      a.className = "quick-link-card";
+      a.href = link.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.innerHTML = `
+        ${link.icon ? `<img class="quick-link-logo" src="${escapeHtml(link.icon)}" alt="${escapeHtml(link.name)}">` : ""}
+        <div class="quick-link-name">${escapeHtml(link.name)}</div>
+        <div class="quick-link-label">${escapeHtml(link.label || "")}</div>
+      `;
+      grid.appendChild(a);
+    }
+  }
+
+  // Init map
+  initMap();
+
+  // Wire up search
+  document.getElementById("search").addEventListener("input", (e) => {
+    searchTerm = e.target.value;
+    render();
+  });
+
+  // Sidebar toggle
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      const sidebar = document.getElementById("sidebar");
+      sidebar.classList.toggle("collapsed");
+      sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "›" : "‹";
+      setTimeout(() => map.invalidateSize(), 250);
+    });
+  }
+
+  // Load places
+  try {
+    const r = await fetch(GEOJSON_URL);
+    if (!r.ok) throw new Error("Failed to load " + GEOJSON_URL);
+    const data = await r.json();
+    allFeatures = data.features;
+    buildChips();
+    render();
+    loadEventMarkers();
+  } catch(err) {
+    document.getElementById("status").textContent = "Error: " + err.message;
+    console.error(err);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

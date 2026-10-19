@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin</title>
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+<style>
+  /* Self-contained. Deliberately does NOT share style.css with the map page,
+     whose global rules (#app flex, body overflow:hidden) break this layout. */
+  :root {
+    --primary: #35425c; --primary-light: #4a5a78;
+    --bg: #f4f6f9; --card: #fff; --fg: #1a1a1a; --muted: #6b7280;
+    --border: #e5e7eb; --green: #15803d; --red: #dc2626;
+    --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: 'Roboto', system-ui, sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; }
+
+  .admin-header { background: var(--primary); color: #fff; padding: 18px 24px; display: flex; align-items: center; gap: 14px; }
+  .admin-header img { width: 38px; height: 38px; border-radius: 8px; object-fit: contain; background: rgba(255,255,255,.1); }
+  .admin-header h1 { font-size: 19px; font-weight: 700; }
+  .admin-header .subtitle { font-size: 13px; color: rgba(255,255,255,.7); margin-top: 2px; }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  #auth { display: flex; gap: 8px; max-width: 420px; }
+  #auth input { flex: 1; padding: 11px 13px; font-size: 14px; font-family: inherit; border: 1px solid var(--border); border-radius: 9px; }
+  #auth button { padding: 11px 20px; font-size: 14px; font-weight: 600; font-family: inherit; background: var(--primary); color: #fff; border: none; border-radius: 9px; cursor: pointer; }
+
+  .main-tabs { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+  .main-tab { padding: 11px 20px; font-size: 14px; font-weight: 600; font-family: inherit; background: none; border: none; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .main-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; min-width: 110px; box-shadow: var(--shadow); }
+  .stat strong { display: block; font-size: 24px; font-weight: 700; color: var(--primary); }
+  .stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; font-family: inherit; background: var(--card); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; color: var(--muted); }
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; }
+  .card-type { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 5px; background: #e8edf4; color: var(--primary); }
+  .card-date { font-size: 12px; color: var(--muted); }
+  .card-place { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+  .card-detail { font-size: 13px; margin: 4px 0; line-height: 1.5; }
+  .card-detail .field-name { color: var(--muted); margin-right: 6px; }
+  .card-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .btn { padding: 8px 16px; font-size: 13px; font-weight: 600; font-family: inherit; border: none; border-radius: 8px; cursor: pointer; }
+  .btn-approve { background: var(--green); color: #fff; }
+  .btn-reject { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--border); color: var(--fg); }
+  .stars { color: #f4c430; letter-spacing: 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 20px; }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .panel h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .panel .panel-desc { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.5; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .field input[type=text], .field input[type=url], .field select { width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit; border: 1px solid var(--border); border-radius: 9px; background: #fafbfc; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); background: #fff; }
+  .field .hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .color-field { display: flex; align-items: center; gap: 10px; }
+  .color-field input[type=color] { width: 46px; height: 42px; padding: 3px; border: 1px solid var(--border); border-radius: 9px; cursor: pointer; background: #fff; }
+  .color-field code { font-size: 13px; color: var(--muted); }
+
+  /* Theme preset swatches */
+  .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 6px; }
+  .theme-card { border: 2px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; background: #fff; text-align: left; font-family: inherit; transition: border-color .15s; }
+  .theme-card:hover { border-color: var(--muted); }
+  .theme-card.active { border-color: var(--primary); }
+  .theme-swatch { display: flex; height: 26px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .theme-swatch i { flex: 1; }
+  .theme-swatch i:nth-child(2) { flex: 0 0 26%; }
+  .theme-swatch i:last-child { flex: 0 0 20%; box-shadow: inset 1px 0 0 rgba(0,0,0,.08); }
+  .theme-name { font-size: 13px; font-weight: 600; }
+  .theme-font { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .ql-item { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; background: #fafbfc; }
+  .ql-top { display: flex; gap: 12px; align-items: flex-start; }
+  .ql-icon { width: 52px; height: 52px; border-radius: 9px; object-fit: contain; background: #eef0f3; flex-shrink: 0; cursor: pointer; border: 1px dashed var(--border); }
+  .ql-fields { flex: 1; display: grid; gap: 8px; }
+  .ql-fields input { width: 100%; padding: 8px 11px; font-size: 13px; font-family: inherit; border: 1px solid var(--border); border-radius: 7px; background: #fff; }
+  .ql-remove { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 2px 8px; border-radius: 6px; line-height: 1; }
+  .ql-remove:hover { background: #fee2e2; color: var(--red); }
+  .add-btn { width: 100%; padding: 11px; font-size: 13px; font-family: inherit; background: none; border: 1px dashed var(--border); border-radius: 9px; color: var(--muted); cursor: pointer; }
+  .add-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  .alert {
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px;
+    font-size: 13px; line-height: 1.55;
+    background: #fff8e6; border: 1px solid #f0d089; color: #7a5300;
+  }
+  .alert strong { display: block; font-size: 14px; margin-bottom: 5px; }
+  .alert ul { margin: 6px 0 0; padding-left: 18px; }
+  .alert li { margin: 3px 0; }
+  .alert .alert-never { color: #8a6a1f; }
+  .src-last { font-size: 12px; color: var(--muted); padding: 0 0 8px; }
+  .src-last.stale { color: #a06a00; font-weight: 500; }
+  .dedupe-controls { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .dedupe-controls .field { flex: 1; min-width: 170px; }
+  .dedupe-result { margin-top: 16px; font-size: 13px; }
+  .dedupe-result.empty-state { color: var(--green); }
+  .dedupe-summary { padding: 12px 14px; border-radius: 10px; background: #f4f6f9; margin-bottom: 12px; }
+  .dedupe-summary strong { font-size: 15px; }
+  .dedupe-bulk { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .btn-small { padding: 5px 11px; font-size: 12px; }
+  .dedupe-count { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .dedupe-list { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .dedupe-group { padding: 12px 14px; border-bottom: 1px solid var(--border); transition: opacity .15s; }
+  .dedupe-group:last-child { border-bottom: none; }
+  .dedupe-group.dimmed { opacity: .45; }
+  .dedupe-group-head { margin-bottom: 8px; }
+  .dedupe-group-toggle {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .dedupe-group-toggle input { cursor: pointer; }
+  .dedupe-keep { font-weight: 600; font-size: 14px; }
+  .kept-tag {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; padding: 2px 7px; border-radius: 4px;
+    background: #dcfce7; color: #166534; margin-right: 7px; vertical-align: middle;
+  }
+  .dedupe-keep .tagsrc { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .dedupe-keep-addr { font-size: 12px; color: var(--muted); margin-top: 3px; padding-left: 2px; }
+
+  .dedupe-rows { padding-left: 4px; }
+  .dedupe-row {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 7px 9px; border-radius: 8px; cursor: pointer;
+  }
+  .dedupe-row:hover { background: #f4f6f9; }
+  .dedupe-row input { margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+  .dedupe-row-body { display: flex; flex-direction: column; min-width: 0; }
+  .dedupe-row-name { font-size: 13px; }
+  .dedupe-row-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .dedupe-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #b91c1c; }
+  .key-field { display: flex; gap: 8px; align-items: stretch; }
+  .key-field input { flex: 1; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+  .key-clear {
+    flex: 0 0 auto; padding: 0 14px; font-size: 12px; font-family: inherit;
+    background: var(--border); color: var(--muted); border: none;
+    border-radius: 9px; cursor: pointer;
+  }
+  .key-clear:hover { background: #fee2e2; color: var(--red); }
+  .src-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .src-row:last-of-type { border-bottom: none; }
+  .src-name { font-size: 14px; font-weight: 600; }
+  .src-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .src-btn { flex: 0 0 auto; }
+  .src-status { font-size: 13px; padding: 0 0 8px; display: none; }
+  .src-status.show { display: block; }
+  .src-status.ok { color: var(--green); }
+  .src-status.err { color: var(--red); }
+  .save-bar { display: flex; align-items: center; gap: 14px; }
+  .btn-save { padding: 12px 28px; font-size: 14px; font-weight: 600; font-family: inherit; background: var(--primary); color: #fff; border: none; border-radius: 9px; cursor: pointer; }
+  .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+  .save-msg { font-size: 13px; font-weight: 500; }
+  .save-msg.ok { color: var(--green); }
+  .save-msg.err { color: var(--red); }
+
+  @media (max-width: 640px) { .field-row { grid-template-columns: 1fr; } .wrap { padding: 18px 14px 50px; } }
+</style>
+</head>
+<body>
+
+<div class="admin-header">
+  <img src="logo.png" alt="" id="adminLogo">
+  <div>
+    <h1 id="adminTitle">Admin</h1>
+    <div class="subtitle">Review submissions and configure your map</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="auth">
+    <input type="password" id="tokenInput" placeholder="Admin token" onkeydown="if(event.key==='Enter')authenticate()">
+    <button onclick="authenticate()">Login</button>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div class="main-tabs">
+      <button class="main-tab active" data-view="submissions" onclick="switchView('submissions')">Submissions</button>
+      <button class="main-tab" data-view="settings" onclick="switchView('settings')">Settings</button>
+    </div>
+
+    <div id="view-submissions">
+      <div class="stats" id="stats"></div>
+      <div class="tabs">
+        <button class="tab active" data-status="pending" onclick="switchStatus('pending')">Pending</button>
+        <button class="tab" data-status="approved" onclick="switchStatus('approved')">Approved</button>
+        <button class="tab" data-status="rejected" onclick="switchStatus('rejected')">Rejected</button>
+      </div>
+      <div id="list"></div>
+    </div>
+
+    <div id="view-settings" style="display:none;">
+
+      <div id="staleAlert" class="alert" style="display:none;"></div>
+
+      <div class="panel">
+        <h2>Site details</h2>
+        <p class="panel-desc">Name and tagline shown in the map sidebar and browser tab.</p>
+        <div class="field">
+          <label for="cfgSiteName">Site name</label>
+          <input type="text" id="cfgSiteName">
+        </div>
+        <div class="field">
+          <label for="cfgTagline">Tagline</label>
+          <input type="text" id="cfgTagline">
+        </div>
+        <div class="field">
+          <label for="cfgLogoPreview">Logo</label>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <img id="cfgLogoPreview" class="ql-icon" style="width:64px;height:64px;" onclick="document.getElementById('cfgLogoFile').click()">
+            <div class="hint">Click the image to upload a replacement. PNG, JPG, SVG or WebP, max 2MB.</div>
+          </div>
+          <input type="file" id="cfgLogoFile" accept="image/*" style="display:none" onchange="uploadSiteLogo(this)">
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Theme</h2>
+        <p class="panel-desc">Pick a preset, or fine-tune the colours and font below. Presets set all three at once.</p>
+        <div class="theme-grid" id="themeGrid"></div>
+        <div class="field-row" style="margin-top:18px;">
+          <div class="field">
+            <label for="cfgThemeColor">Primary colour</label>
+            <div class="color-field">
+              <input type="color" id="cfgThemeColor" oninput="onManualThemeChange()">
+              <code id="themeHex"></code>
+            </div>
+            <div class="hint">Sidebar, buttons, highlights.</div>
+          </div>
+          <div class="field">
+            <label for="cfgAccentColor">Accent colour</label>
+            <div class="color-field">
+              <input type="color" id="cfgAccentColor" oninput="onManualThemeChange()">
+              <code id="accentHex"></code>
+            </div>
+            <div class="hint">Event pins and secondary highlights.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="cfgFont">Font</label>
+          <select id="cfgFont" onchange="onManualThemeChange()">
+            <option value="Roboto">Roboto</option>
+            <option value="Inter">Inter</option>
+            <option value="Open Sans">Open Sans</option>
+            <option value="Lato">Lato</option>
+            <option value="Source Sans 3">Source Sans 3</option>
+            <option value="Nunito">Nunito</option>
+            <option value="Work Sans">Work Sans</option>
+            <option value="IBM Plex Sans">IBM Plex Sans</option>
+            <option value="Manrope">Manrope</option>
+            <option value="Outfit">Outfit</option>
+          </select>
+          <div class="hint">Loaded from Google Fonts on the map page.</div>
+        </div>
+        <div class="field">
+          <label for="cfgSidebarStyle">Sidebar background</label>
+          <select id="cfgSidebarStyle">
+            <option value="gradient">Gradient — dark at top, lighter below</option>
+            <option value="diagonal">Diagonal gradient</option>
+            <option value="solid">Solid primary colour</option>
+            <option value="deep">Deep — darker solid</option>
+            <option value="accentmix">Primary fading into accent</option>
+          </select>
+          <div class="hint">All options derive from the primary colour above.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Map tiles</h2>
+        <p class="panel-desc">Which basemap loads by default. CARTO styles show a watermark unless you supply a free API key.</p>
+        <div class="field">
+          <label for="cfgDefaultLayer">Default layer</label>
+          <select id="cfgDefaultLayer">
+            <option value="Light">Light — Esri grey, or CARTO if key set</option>
+            <option value="Standard">OpenStreetMap — full colour, no key</option>
+            <option value="Satellite">Esri Satellite — aerial imagery</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cfgCartoKey">CARTO API key (optional)</label>
+          <div class="key-field"><input type="text" id="cfgCartoKey" placeholder="Paste your CARTO API key" autocomplete="off" spellcheck="false"><button type="button" class="key-clear" onclick="clearKeyField('cfgCartoKey')" title="Remove this key">Remove</button></div>
+          <div class="hint">Free key from carto.com → sign up → Developers → API Keys. Without one, CARTO tiles show an "API KEY REQUIRED" watermark. Leave blank and use OpenStreetMap or Esri instead.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Data sources</h2>
+        <p class="panel-desc">Re-run an importer to pick up new businesses and updated hygiene ratings. Existing entries are matched and enriched rather than duplicated.</p>
+        <div class="src-row">
+          <div>
+            <div class="src-name">OpenStreetMap</div>
+            <div class="src-desc">Shops, food, schools, GPs, parks</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="osm" onclick="runAdminImport('osm')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-osm"></div>
+        <div class="src-status" id="adminstatus-osm"></div>
+
+        <div class="src-row">
+          <div>
+            <div class="src-name">Food Standards Agency</div>
+            <div class="src-desc">Hygiene ratings for food businesses</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="fsa" onclick="runAdminImport('fsa')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-fsa"></div>
+        <div class="src-status" id="adminstatus-fsa"></div>
+
+        <div class="src-row">
+          <div>
+            <div class="src-name">NaPTAN</div>
+            <div class="src-desc">Bus stops, rail and tram stations</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="naptan" onclick="runAdminImport('naptan')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-naptan"></div>
+        <div class="src-status" id="adminstatus-naptan"></div>
+
+        <div class="src-row">
+          <div>
+            <div class="src-name">Overture Maps</div>
+            <div class="src-desc">Open place data, no API key required</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="overture" onclick="runAdminImport('overture')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-overture"></div>
+        <div class="src-status" id="adminstatus-overture"></div>
+
+        <div class="src-row">
+          <div>
+            <div class="src-name">Foursquare</div>
+            <div class="src-desc">Business listings with phone and website</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="foursquare" onclick="runAdminImport('foursquare')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-foursquare"></div>
+        <div class="src-status" id="adminstatus-foursquare"></div>
+
+        <div class="src-row">
+          <div>
+            <div class="src-name">Google Places</div>
+            <div class="src-desc">Best opening hours and phone numbers. Needs a key and billing enabled.</div>
+          </div>
+          <button class="btn btn-ghost src-btn" data-source="google" onclick="runAdminImport('google')">Run</button>
+        </div>
+        <div class="src-last" id="lastrun-google"></div>
+        <div class="src-status" id="adminstatus-google"></div>
+
+        <div class="field" style="margin-top:16px;">
+          <label for="cfgFoursquareKey">Foursquare API key</label>
+          <div class="key-field"><input type="text" id="cfgFoursquareKey" placeholder="Paste your Foursquare API key" autocomplete="off" spellcheck="false"><button type="button" class="key-clear" onclick="clearKeyField('cfgFoursquareKey')" title="Remove this key">Remove</button></div>
+          <div class="hint">Free key from foursquare.com/developers. Save settings before running the import.</div>
+        </div>
+        <div class="field">
+          <label for="cfgGoogleKey">Google Places API key</label>
+          <div class="key-field"><input type="text" id="cfgGoogleKey" placeholder="Paste your Google Places API key" autocomplete="off" spellcheck="false"><button type="button" class="key-clear" onclick="clearKeyField('cfgGoogleKey')" title="Remove this key">Remove</button></div>
+          <div class="hint">console.cloud.google.com → enable "Places API (New)" → Credentials. Restrict the key to this server's outbound IP and set a daily quota cap. One import run makes 12 API calls.</div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="cfgOvertureRelease">Overture release</label>
+          <input type="text" id="cfgOvertureRelease" placeholder="Leave blank to auto-detect">
+          <div class="hint">Overture publishes monthly and keeps only the last two releases available, so leaving this blank is recommended — the importer finds the newest one automatically. Imports run in the background and can take a few minutes.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Duplicate places</h2>
+        <p class="panel-desc">Importing from several sources can leave the same business listed twice. This finds records with matching names close together, keeps the one holding the most detail, and folds the rest into it. Nothing is deleted — duplicates are marked merged and removed from the map.</p>
+
+        <div class="dedupe-controls">
+          <div class="field" style="margin-bottom:0;">
+            <label for="dedupeRadius">Match radius</label>
+            <select id="dedupeRadius">
+              <option value="100">100 m — very strict</option>
+              <option value="250" selected>250 m — recommended</option>
+              <option value="500">500 m — loose</option>
+              <option value="1000">1 km — very loose</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="dedupeThreshold">Name similarity</label>
+            <select id="dedupeThreshold">
+              <option value="0.95">95% — near-identical only</option>
+              <option value="0.88" selected>88% — recommended</option>
+              <option value="0.75">75% — catches more variants</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost" id="dedupeScanBtn" onclick="scanDuplicates()">Scan for duplicates</button>
+        </div>
+
+        <div class="dedupe-result" id="dedupeResult"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Social links</h2>
+        <p class="panel-desc">Shown as icon buttons beside the Quick Links button in the map sidebar. Leave a field blank to hide that icon.</p>
+        <div class="field">
+          <label for="cfgSocialFacebook">Facebook</label>
+          <input type="url" id="cfgSocialFacebook" placeholder="https://facebook.com/yourpage">
+        </div>
+        <div class="field">
+          <label for="cfgSocialInstagram">Instagram</label>
+          <input type="url" id="cfgSocialInstagram" placeholder="https://instagram.com/yourhandle">
+        </div>
+        <div class="field">
+          <label for="cfgSocialX">X</label>
+          <input type="url" id="cfgSocialX" placeholder="https://x.com/yourhandle">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="cfgSocialEmail">Email</label>
+          <input type="text" id="cfgSocialEmail" placeholder="hello@yourdomain.com">
+          <div class="hint">Opens the visitor's mail app. The mailto: prefix is added automatically.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Quick links</h2>
+        <p class="panel-desc">Shown in the Quick Links popup on the map. Click an icon box to upload a logo.</p>
+        <div id="qlList"></div>
+        <button class="add-btn" onclick="addQuickLink()">+ Add a link</button>
+      </div>
+
+      <div class="save-bar">
+        <button class="btn-save" id="saveBtn" onclick="saveSettings()">Save settings</button>
+        <span class="save-msg" id="saveMsg"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="qlIconFile" accept="image/*" style="display:none">
+
+<script>
+const API = "";
+let TOKEN = sessionStorage.getItem("adminToken") || "";
+let currentStatus = "pending";
+let CONFIG = {};
+let quickLinks = [];
+
+// ---------------------------------------------------------------------------
+// Theme presets
+// ---------------------------------------------------------------------------
+// Each theme defines a complete token set so every surface stays in step —
+// sidebar, buttons, map pins, chips, badges and the page background all shift
+// together rather than only the primary colour changing.
+const THEMES = [
+  { id: "midnight",   name: "Midnight",   font: "Roboto",
+    primary: "#35425c", accent: "#e07b00", surface: "#ffffff", canvas: "#f4f6f9",
+    ink: "#1a1f2b", muted: "#5f6b7f", border: "#e3e7ee", sidebar: "gradient" },
+
+  { id: "forest",     name: "Forest",     font: "Nunito",
+    primary: "#2d5a3d", accent: "#d68c45", surface: "#ffffff", canvas: "#f3f7f3",
+    ink: "#17251c", muted: "#5c6b60", border: "#dde7de", sidebar: "gradient" },
+
+  { id: "harbour",    name: "Harbour",    font: "Inter",
+    primary: "#14453d", accent: "#f08a4b", surface: "#ffffff", canvas: "#f1f6f5",
+    ink: "#12211e", muted: "#576763", border: "#dae6e3", sidebar: "gradient" },
+
+  { id: "ocean",      name: "Ocean",      font: "Open Sans",
+    primary: "#1b4965", accent: "#f4a261", surface: "#ffffff", canvas: "#f1f5f8",
+    ink: "#15242e", muted: "#566873", border: "#dae3ea", sidebar: "gradient" },
+
+  { id: "claret",     name: "Claret",     font: "Lato",
+    primary: "#6b2737", accent: "#c9a227", surface: "#ffffff", canvas: "#f9f3f4",
+    ink: "#26161a", muted: "#6f5a5f", border: "#ecdfe1", sidebar: "gradient" },
+
+  { id: "heather",    name: "Heather",    font: "Work Sans",
+    primary: "#4a3f6b", accent: "#e5989b", surface: "#ffffff", canvas: "#f5f3f9",
+    ink: "#1e1a2b", muted: "#635c78", border: "#e4e0ee", sidebar: "gradient" },
+
+  { id: "terracotta", name: "Terracotta", font: "Source Sans 3",
+    primary: "#8c4a32", accent: "#4f7942", surface: "#ffffff", canvas: "#faf4f1",
+    ink: "#2a1a13", muted: "#776056", border: "#eee0d9", sidebar: "gradient" },
+
+  { id: "charcoal",   name: "Charcoal",   font: "IBM Plex Sans",
+    primary: "#2b2d33", accent: "#f2b705", surface: "#ffffff", canvas: "#f4f4f6",
+    ink: "#16171b", muted: "#5e6169", border: "#e3e4e8", sidebar: "solid" },
+
+  { id: "sage",       name: "Sage",       font: "Manrope",
+    primary: "#5f7161", accent: "#b56576", surface: "#ffffff", canvas: "#f4f6f4",
+    ink: "#1d241e", muted: "#5f6b60", border: "#e0e6e0", sidebar: "gradient" },
+
+  { id: "slate",      name: "Slate",      font: "Outfit",
+    primary: "#3f4a54", accent: "#4a9eb8", surface: "#ffffff", canvas: "#f3f5f7",
+    ink: "#1a1f24", muted: "#5c666f", border: "#e1e5e9", sidebar: "diagonal" },
+
+  { id: "plum",       name: "Plum",       font: "Manrope",
+    primary: "#54204a", accent: "#f2b5a0", surface: "#ffffff", canvas: "#f9f2f7",
+    ink: "#231226", muted: "#6d5566", border: "#ecdde7", sidebar: "gradient" },
+
+  { id: "moss",       name: "Moss",       font: "Work Sans",
+    primary: "#3a4a2f", accent: "#c98b3a", surface: "#ffffff", canvas: "#f5f7f2",
+    ink: "#1b2116", muted: "#5f6a56", border: "#e2e7db", sidebar: "diagonal" },
+
+  { id: "denim",      name: "Denim",      font: "Inter",
+    primary: "#2f4858", accent: "#e8963c", surface: "#ffffff", canvas: "#f2f5f7",
+    ink: "#16212a", muted: "#5a6873", border: "#dde4e9", sidebar: "gradient" },
+
+  { id: "cocoa",      name: "Cocoa",      font: "Lato",
+    primary: "#4a3728", accent: "#7fa650", surface: "#ffffff", canvas: "#f8f5f1",
+    ink: "#221a12", muted: "#6b5c4e", border: "#eae2d8", sidebar: "solid" },
+
+  { id: "indigo",     name: "Indigo",     font: "Outfit",
+    primary: "#2b3a67", accent: "#f6ae2d", surface: "#ffffff", canvas: "#f2f4f9",
+    ink: "#151c30", muted: "#5a6280", border: "#dee2ee", sidebar: "diagonal" },
+
+  { id: "rust",       name: "Rust",       font: "Source Sans 3",
+    primary: "#7c3626", accent: "#3d7068", surface: "#ffffff", canvas: "#faf3f1",
+    ink: "#2b1611", muted: "#75574f", border: "#eddfda", sidebar: "gradient" },
+];
+
+function renderThemes() {
+  const grid = document.getElementById("themeGrid");
+  grid.innerHTML = "";
+  THEMES.forEach(t => {
+    const b = document.createElement("button");
+    b.className = "theme-card";
+    b.dataset.theme = t.id;
+    b.innerHTML = `
+      <div class="theme-swatch">
+        <i style="background:${t.primary}"></i>
+        <i style="background:${t.accent}"></i>
+        <i style="background:${t.canvas}"></i>
+      </div>
+      <div class="theme-name">${t.name}</div>
+      <div class="theme-font">${t.font}</div>`;
+    b.addEventListener("click", () => applyTheme(t.id));
+    grid.appendChild(b);
+  });
+  markActiveTheme();
+}
+
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById("cfgThemeColor").value = t.primary;
+  document.getElementById("themeHex").textContent = t.primary;
+  document.getElementById("cfgAccentColor").value = t.accent;
+  document.getElementById("accentHex").textContent = t.accent;
+  document.getElementById("cfgFont").value = t.font;
+  const sidebarSel = document.getElementById("cfgSidebarStyle");
+  if (sidebarSel && t.sidebar) sidebarSel.value = t.sidebar;
+
+  // Remember the full palette so it saves with the rest of the settings
+  activeThemeTokens = {
+    surface: t.surface, canvas: t.canvas,
+    ink: t.ink, muted: t.muted, border: t.border,
+  };
+
+  document.documentElement.style.setProperty("--primary", t.primary);
+  markActiveTheme();
+}
+
+let activeThemeTokens = null;
+
+function markActiveTheme() {
+  const p = document.getElementById("cfgThemeColor").value.toLowerCase();
+  const a = document.getElementById("cfgAccentColor").value.toLowerCase();
+  const f = document.getElementById("cfgFont").value;
+  document.querySelectorAll(".theme-card").forEach(c => {
+    const t = THEMES.find(x => x.id === c.dataset.theme);
+    c.classList.toggle("active", t && t.primary.toLowerCase() === p && t.accent.toLowerCase() === a && t.font === f);
+  });
+}
+
+function onManualThemeChange() {
+  document.getElementById("themeHex").textContent = document.getElementById("cfgThemeColor").value;
+  document.getElementById("accentHex").textContent = document.getElementById("cfgAccentColor").value;
+  document.documentElement.style.setProperty("--primary", document.getElementById("cfgThemeColor").value);
+  markActiveTheme();
+}
+
+function headers() {
+  return { "Authorization": "Bearer " + TOKEN, "Content-Type": "application/json" };
+}
+
+fetch("/api/config").then(r => r.json()).then(cfg => {
+  if (cfg.site_name) {
+    document.title = cfg.site_name + " — Admin";
+    document.getElementById("adminTitle").textContent = cfg.site_name + " — Admin";
+  }
+  if (cfg.logo) document.getElementById("adminLogo").src = cfg.logo;
+  if (cfg.theme_color) document.documentElement.style.setProperty("--primary", cfg.theme_color);
+}).catch(() => {});
+
+async function authenticate() {
+  const val = document.getElementById("tokenInput").value.trim();
+  if (val) TOKEN = val;
+  try {
+    const r = await fetch(API + "/api/admin/stats", { headers: headers() });
+    if (!r.ok) { alert("Invalid token"); return; }
+    sessionStorage.setItem("adminToken", TOKEN);
+    document.getElementById("auth").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    load();
+    loadSettings();
+  } catch (e) { alert("Could not reach the server: " + e.message); }
+}
+
+function switchView(view) {
+  document.querySelectorAll(".main-tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+  document.getElementById("view-submissions").style.display = view === "submissions" ? "block" : "none";
+  document.getElementById("view-settings").style.display = view === "settings" ? "block" : "none";
+}
+
+function switchStatus(status) {
+  currentStatus = status;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.status === status));
+  load();
+}
+
+async function load() {
+  try {
+    const s = await (await fetch(API + "/api/admin/stats", { headers: headers() })).json();
+    document.getElementById("stats").innerHTML =
+      `<div class="stat"><strong>${s.pending}</strong><span>Pending</span></div>
+       <div class="stat"><strong>${s.approved}</strong><span>Approved</span></div>
+       <div class="stat"><strong>${s.rejected}</strong><span>Rejected</span></div>`;
+    const items = await (await fetch(API + "/api/admin/pending?status=" + currentStatus, { headers: headers() })).json();
+    const list = document.getElementById("list");
+    list.innerHTML = items.length ? items.map(renderCard).join("")
+                                  : `<div class="empty">No ${currentStatus} submissions</div>`;
+  } catch (e) {
+    document.getElementById("list").innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderCard(item) {
+  const p = item.payload || {};
+  let details = "";
+  if (item.type === "review") {
+    details = `<div class="card-detail"><span class="stars">${"\u2605".repeat(p.stars || 0)}${"\u2606".repeat(5 - (p.stars || 0))}</span></div>
+      <div class="card-detail">${esc(p.comment || "")}</div>
+      <div class="card-detail"><span class="field-name">By</span>${esc(p.name || "Anonymous")}</div>`;
+  } else if (item.type === "event") {
+    details = `<div class="card-detail"><span class="field-name">Title</span>${esc(p.title || "")}</div>
+      <div class="card-detail"><span class="field-name">When</span>${esc(p.date || "")} ${esc(p.time || "")}</div>
+      <div class="card-detail"><span class="field-name">Where</span>${esc(p.location || "")}</div>
+      ${p.desc ? `<div class="card-detail">${esc(p.desc)}</div>` : ""}`;
+  } else if (item.type === "new_business") {
+    details = `<div class="card-detail"><span class="field-name">Name</span>${esc(p.name || "")}</div>
+      <div class="card-detail"><span class="field-name">Address</span>${esc(p.address || "")}</div>
+      ${p.phone ? `<div class="card-detail"><span class="field-name">Phone</span>${esc(p.phone)}</div>` : ""}
+      ${p.website ? `<div class="card-detail"><span class="field-name">Web</span>${esc(p.website)}</div>` : ""}`;
+  } else if (item.type === "edit") {
+    details = `<div class="card-detail"><span class="field-name">Field</span>${esc(p.field || "")}</div>
+      <div class="card-detail"><span class="field-name">New value</span>${esc(p.value || "")}</div>`;
+  } else {
+    details = `<div class="card-detail">${esc(p.notes || "")}</div>`;
+  }
+  if (p.submitter_email) details += `<div class="card-detail"><span class="field-name">Email</span>${esc(p.submitter_email)}</div>`;
+
+  const actions = item.status === "pending"
+    ? `<div class="card-actions">
+         <button class="btn btn-approve" onclick="action(${item.id},'approve')">Approve</button>
+         <button class="btn btn-reject" onclick="action(${item.id},'reject')">Reject</button>
+       </div>`
+    : `<div class="card-actions">
+         <button class="btn btn-ghost" onclick="deleteItem(${item.id})">Delete</button>
+       </div>`;
+
+  return `<div class="card" id="card-${item.id}">
+      <div class="card-header">
+        <span class="card-type">${esc(item.type.replace("_", " "))}</span>
+        <span class="card-date">${esc((item.created_at || "").replace("T", " ").slice(0, 16))}</span>
+      </div>
+      ${item.place_name ? `<div class="card-place">${esc(item.place_name)}</div>` : ""}
+      ${details}${actions}
+    </div>`;
+}
+
+async function action(id, verb) {
+  try {
+    const r = await fetch(API + `/api/admin/${id}/${verb}`, { method: "POST", headers: headers() });
+    if (!r.ok) { alert("Failed: " + r.status); return; }
+    load();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteItem(id) {
+  if (!confirm("Permanently delete this submission? If it was a closure report, the place is restored to the map.")) return;
+  try {
+    const r = await fetch(API + `/api/admin/${id}/delete`, { method: "POST", headers: headers() });
+    if (!r.ok) { alert("Failed: " + r.status); return; }
+    load();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function loadSettings() {
+  try {
+    CONFIG = await (await fetch(API + "/api/admin/config", { headers: headers() })).json();
+  } catch (e) { return; }
+
+  document.getElementById("cfgSiteName").value = CONFIG.site_name || "";
+  document.getElementById("cfgTagline").value = CONFIG.tagline || "";
+  document.getElementById("cfgLogoPreview").src = CONFIG.logo || "logo.png";
+
+  const theme = CONFIG.theme_color || "#35425c";
+  const accent = CONFIG.accent_color || "#e07b00";
+  document.getElementById("cfgThemeColor").value = theme;
+  document.getElementById("themeHex").textContent = theme;
+  document.getElementById("cfgAccentColor").value = accent;
+  document.getElementById("accentHex").textContent = accent;
+  document.getElementById("cfgFont").value = CONFIG.font_family || "Roboto";
+  document.getElementById("cfgSidebarStyle").value = CONFIG.sidebar_style || "gradient";
+  document.getElementById("cfgDefaultLayer").value = CONFIG.default_layer || "Light";
+  setKeyField("cfgCartoKey", "carto_api_key");
+  setKeyField("cfgFoursquareKey", "foursquare_api_key");
+  setKeyField("cfgGoogleKey", "google_api_key");
+  document.getElementById("cfgOvertureRelease").value = CONFIG.overture_release || "";
+
+  const social = CONFIG.social || {};
+  document.getElementById("cfgSocialFacebook").value = social.facebook || "";
+  document.getElementById("cfgSocialInstagram").value = social.instagram || "";
+  document.getElementById("cfgSocialX").value = social.x || "";
+  document.getElementById("cfgSocialEmail").value = social.email || "";
+
+  activeThemeTokens = CONFIG.theme_tokens || null;
+  renderThemes();
+  quickLinks = JSON.parse(JSON.stringify(CONFIG.quick_links || []));
+  renderQuickLinks();
+  renderImportFreshness();
+}
+
+function renderQuickLinks() {
+  const list = document.getElementById("qlList");
+  list.innerHTML = "";
+  quickLinks.forEach((link, i) => {
+    const div = document.createElement("div");
+    div.className = "ql-item";
+    div.innerHTML = `<div class="ql-top">
+        <img class="ql-icon" src="${esc(link.icon || "")}" title="Click to upload an icon" onerror="this.removeAttribute('src')" data-idx="${i}">
+        <div class="ql-fields">
+          <input type="text" placeholder="Name (e.g. Local News)" value="${esc(link.name || "")}" data-field="name" data-idx="${i}">
+          <input type="text" placeholder="Short description" value="${esc(link.label || "")}" data-field="label" data-idx="${i}">
+          <input type="url" placeholder="https://..." value="${esc(link.url || "")}" data-field="url" data-idx="${i}">
+        </div>
+        <button class="ql-remove" title="Remove" data-remove="${i}">&times;</button>
+      </div>`;
+    list.appendChild(div);
+  });
+  list.querySelectorAll("input[data-field]").forEach(inp => {
+    inp.addEventListener("input", e => { quickLinks[+e.target.dataset.idx][e.target.dataset.field] = e.target.value; });
+  });
+  list.querySelectorAll("[data-remove]").forEach(btn => {
+    btn.addEventListener("click", e => { quickLinks.splice(+e.currentTarget.dataset.remove, 1); renderQuickLinks(); });
+  });
+  list.querySelectorAll(".ql-icon").forEach(img => {
+    img.addEventListener("click", () => uploadQuickLinkIcon(+img.dataset.idx));
+  });
+}
+
+function addQuickLink() { quickLinks.push({ name: "", label: "", url: "", icon: "" }); renderQuickLinks(); }
+
+function uploadQuickLinkIcon(idx) {
+  const input = document.getElementById("qlIconFile");
+  input.value = "";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("image", file);
+    try {
+      const r = await fetch(API + "/api/admin/upload-image", {
+        method: "POST", headers: { "Authorization": "Bearer " + TOKEN }, body: fd });
+      const data = await r.json();
+      if (data.filename) { quickLinks[idx].icon = data.filename; renderQuickLinks(); }
+      else alert("Upload failed: " + (data.error || "unknown error"));
+    } catch (e) { alert("Upload failed: " + e.message); }
+  };
+  input.click();
+}
+
+async function uploadSiteLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("image", file);
+  fd.append("as_logo", "1");
+  try {
+    const r = await fetch(API + "/api/admin/upload-image", {
+      method: "POST", headers: { "Authorization": "Bearer " + TOKEN }, body: fd });
+    const data = await r.json();
+    if (data.filename) {
+      CONFIG.logo = data.filename;
+      document.getElementById("cfgLogoPreview").src = data.filename + "?t=" + Date.now();
+    } else alert("Upload failed: " + (data.error || "unknown error"));
+  } catch (e) { alert("Upload failed: " + e.message); }
+}
+
+const STALE_DAYS = 30;
+
+// Sources that need an API key — don't nag about these unless one is configured.
+const SOURCE_REQUIRES_KEY = {
+  foursquare: "foursquare_api_key",
+  google: "google_api_key",
+};
+
+function daysSince(iso) {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (isNaN(then)) return null;
+  return Math.floor((Date.now() - then.getTime()) / 86400000);
+}
+
+function relativeDays(days) {
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
+
+function isSourceApplicable(source) {
+  const keyField = SOURCE_REQUIRES_KEY[source];
+  if (!keyField) return true;
+  return Boolean((CONFIG[keyField] || "").trim());
+}
+
+function renderImportFreshness() {
+  const history = CONFIG.last_import || {};
+  const stale = [];
+  const never = [];
+
+  Object.keys(SOURCE_NAMES).forEach(source => {
+    const el = document.getElementById("lastrun-" + source);
+    const entry = history[source];
+    const applicable = isSourceApplicable(source);
+
+    if (!entry) {
+      if (el) {
+        el.textContent = applicable ? "Never run" : "Never run — no API key set";
+        el.className = "src-last" + (applicable ? " stale" : "");
+      }
+      if (applicable) never.push(SOURCE_NAMES[source]);
+      return;
+    }
+
+    const days = daysSince(entry.at);
+    const count = entry.count;
+    const countText = count === 0 ? "nothing new" : `${count} places`;
+
+    if (el) {
+      el.textContent = `Last run ${relativeDays(days)} — ${countText}`;
+      el.className = "src-last" + (days >= STALE_DAYS ? " stale" : "");
+    }
+    if (days >= STALE_DAYS && applicable) {
+      stale.push(`${SOURCE_NAMES[source]} — ${days} days ago`);
+    }
+  });
+
+  const box = document.getElementById("staleAlert");
+  if (!stale.length && !never.length) {
+    box.style.display = "none";
+    return;
+  }
+
+  let html = "<strong>Some data sources need refreshing</strong>";
+  if (stale.length) {
+    html += `Not updated in over ${STALE_DAYS} days:<ul>`
+          + stale.map(t => `<li>${esc(t)}</li>`).join("") + "</ul>";
+  }
+  if (never.length) {
+    html += `<div class="alert-never" style="margin-top:8px;">Never run: `
+          + never.map(esc).join(", ") + "</div>";
+  }
+  html += `<div style="margin-top:9px;">Run them again from the Data sources panel below to pick up new businesses and updated details.</div>`;
+
+  box.innerHTML = html;
+  box.style.display = "block";
+}
+
+const ADMIN_SOURCE_LABELS = { osm: "OpenStreetMap", fsa: "the Food Standards Agency",
+  naptan: "NaPTAN", overture: "Overture Maps", foursquare: "Foursquare",
+  google: "Google Places" };
+
+// Short names for lists and status lines
+const SOURCE_NAMES = { osm: "OpenStreetMap", fsa: "Food Standards Agency",
+  naptan: "NaPTAN", overture: "Overture Maps", foursquare: "Foursquare",
+  google: "Google Places" };
+
+async function runAdminImport(source) {
+  const btn = document.querySelector(`.src-btn[data-source="${source}"]`);
+  const status = document.getElementById("adminstatus-" + source);
+  const label = ADMIN_SOURCE_LABELS[source] || source;
+
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  status.className = "src-status show";
+  status.textContent = `Connecting to ${label}...`;
+
+  try {
+    const r = await fetch(API + "/api/admin/import", {
+      method: "POST", headers: headers(), body: JSON.stringify({ source }) });
+    const data = await safeJson(r);
+    if (!data.ok) throw new Error(data.error || "Import failed");
+
+    // The import runs in the background — poll until it finishes so slow
+    // sources (Overture can take minutes) don't hit a proxy timeout.
+    const result = await pollImportJob(data.job_id, status, label);
+
+    const verb = ["fsa","foursquare","overture","google"].includes(source) ? "added or enriched" : "imported";
+    status.textContent = result.imported
+      ? `${result.imported} places ${verb} from ${label}`
+      : `Nothing new found from ${label}`;
+    status.className = "src-status show " + (result.imported ? "ok" : "");
+
+    CONFIG.last_import = CONFIG.last_import || {};
+    CONFIG.last_import[source] = { at: new Date().toISOString(), count: result.imported };
+    renderImportFreshness();
+  } catch (e) {
+    status.textContent = e.message;
+    status.className = "src-status show err";
+  }
+  btn.disabled = false;
+  btn.textContent = "Run";
+}
+
+// Polls an import job until it completes. Resolves with the finished job,
+// rejects with a readable error.
+async function pollImportJob(jobId, statusEl, label, opts = {}) {
+  const url = opts.url || (API + "/api/admin/import/status");
+  const auth = opts.headers || headers();
+  const maxWait = opts.maxWait || 600;          // 10 minutes
+  const started = Date.now();
+
+  while (true) {
+    await new Promise(res => setTimeout(res, 2000));
+
+    const elapsed = Math.round((Date.now() - started) / 1000);
+    if (elapsed > maxWait) {
+      throw new Error(`${label} is taking longer than ${Math.round(maxWait / 60)} minutes — check the container logs.`);
+    }
+
+    let job;
+    try {
+      const r = await fetch(`${url}?job_id=${encodeURIComponent(jobId)}`, { headers: auth });
+      job = await safeJson(r);
+    } catch (e) {
+      // A transient network blip shouldn't abandon a running import
+      continue;
+    }
+
+    if (job.status === "running") {
+      statusEl.textContent = `Importing from ${label}… ${job.elapsed || elapsed}s elapsed`;
+      statusEl.className = statusEl.className.replace(/ (ok|err)\b/g, "");
+      continue;
+    }
+    if (job.status === "error") throw new Error(job.error || "Import failed");
+    return job;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate detection
+// ---------------------------------------------------------------------------
+let lastDedupeScan = null;
+
+// Reads a JSON response safely — a proxy timeout or crash returns HTML, and
+// calling .json() on that throws an unhelpful parse error.
+async function safeJson(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const snippet = text.trim().slice(0, 120).replace(/\s+/g, " ");
+    throw new Error(
+      response.status === 504 || response.status === 502
+        ? `The server took too long to respond (${response.status}). Large imports can exceed a proxy timeout — try a smaller radius.`
+        : `Server returned ${response.status} instead of JSON: ${snippet || "(empty response)"}`
+    );
+  }
+}
+
+function dedupeParams() {
+  return {
+    radius_m: parseInt(document.getElementById("dedupeRadius").value, 10),
+    threshold: parseFloat(document.getElementById("dedupeThreshold").value),
+  };
+}
+
+async function scanDuplicates() {
+  const btn = document.getElementById("dedupeScanBtn");
+  const box = document.getElementById("dedupeResult");
+  const { radius_m, threshold } = dedupeParams();
+
+  btn.disabled = true;
+  btn.textContent = "Scanning...";
+  box.className = "dedupe-result";
+  box.innerHTML = "Checking every active place for near-matches...";
+
+  try {
+    const r = await fetch(
+      `${API}/api/admin/duplicates?radius_m=${radius_m}&threshold=${threshold}`,
+      { headers: headers() });
+    const data = await safeJson(r);
+    if (!data.ok) throw new Error(data.error || "Scan failed");
+
+    lastDedupeScan = data;
+    renderDedupeResult(data);
+  } catch (e) {
+    box.className = "dedupe-result";
+    box.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = "Scan for duplicates";
+}
+
+function renderDedupeResult(data) {
+  const box = document.getElementById("dedupeResult");
+
+  if (!data.duplicates) {
+    box.className = "dedupe-result empty-state";
+    box.innerHTML = "No duplicates found — nothing to merge.";
+    return;
+  }
+
+  const groups = data.detail.map((g, gi) => {
+    const rows = g.merge.map((m, mi) => `
+      <label class="dedupe-row">
+        <input type="checkbox" class="dedupe-cb" checked
+               data-group="${gi}" data-keep="${g.keep.id}" data-merge="${m.id}">
+        <span class="dedupe-row-body">
+          <span class="dedupe-row-name">${esc(m.name)}</span>
+          <span class="dedupe-row-meta">${esc(m.source || "unknown")} · ${m.distance_m}m away · ${m.detail} field${m.detail === 1 ? "" : "s"}${m.address ? " · " + esc(m.address) : ""}</span>
+        </span>
+      </label>`).join("");
+
+    return `
+      <div class="dedupe-group" data-group="${gi}">
+        <div class="dedupe-group-head">
+          <label class="dedupe-group-toggle">
+            <input type="checkbox" class="dedupe-group-cb" checked data-group="${gi}">
+            <span>Select group</span>
+          </label>
+          <div class="dedupe-keep">
+            <span class="kept-tag">Keeping</span>
+            ${esc(g.keep.name)}
+            <span class="tagsrc">${esc(g.keep.source || "")} · ${g.keep.detail} field${g.keep.detail === 1 ? "" : "s"}</span>
+          </div>
+          ${g.keep.address ? `<div class="dedupe-keep-addr">${esc(g.keep.address)}</div>` : ""}
+        </div>
+        <div class="dedupe-rows">${rows}</div>
+      </div>`;
+  }).join("");
+
+  box.className = "dedupe-result";
+  box.innerHTML = `
+    <div class="dedupe-summary">
+      <strong>${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"}</strong>
+      found across ${data.groups} group${data.groups === 1 ? "" : "s"}.
+      The record holding the most detail is kept in each group — untick anything
+      you want to leave alone.
+    </div>
+    <div class="dedupe-bulk">
+      <button class="btn btn-ghost btn-small" onclick="setAllDuplicates(true)">Select all</button>
+      <button class="btn btn-ghost btn-small" onclick="setAllDuplicates(false)">Select none</button>
+      <span class="dedupe-count" id="dedupeCount"></span>
+    </div>
+    <div class="dedupe-list">${groups}</div>
+    <div class="dedupe-actions">
+      <button class="btn btn-danger" id="dedupeMergeBtn" onclick="mergeDuplicates()">Merge selected</button>
+      <span style="color:var(--muted); font-size:12px;">Records are marked merged, not deleted.</span>
+    </div>`;
+
+  box.querySelectorAll(".dedupe-cb").forEach(cb =>
+    cb.addEventListener("change", () => { syncGroupCheckbox(cb.dataset.group); updateDedupeCount(); }));
+  box.querySelectorAll(".dedupe-group-cb").forEach(cb =>
+    cb.addEventListener("change", () => {
+      box.querySelectorAll(`.dedupe-cb[data-group="${cb.dataset.group}"]`)
+         .forEach(x => { x.checked = cb.checked; });
+      updateDedupeCount();
+    }));
+
+  updateDedupeCount();
+}
+
+// Keeps a group's master checkbox in step with its children
+function syncGroupCheckbox(groupIndex) {
+  const boxes = [...document.querySelectorAll(`.dedupe-cb[data-group="${groupIndex}"]`)];
+  const master = document.querySelector(`.dedupe-group-cb[data-group="${groupIndex}"]`);
+  if (!master || !boxes.length) return;
+  const checked = boxes.filter(b => b.checked).length;
+  master.checked = checked === boxes.length;
+  master.indeterminate = checked > 0 && checked < boxes.length;
+}
+
+function setAllDuplicates(state) {
+  document.querySelectorAll(".dedupe-cb").forEach(cb => { cb.checked = state; });
+  document.querySelectorAll(".dedupe-group-cb").forEach(cb => {
+    cb.checked = state;
+    cb.indeterminate = false;
+  });
+  updateDedupeCount();
+}
+
+function selectedDuplicates() {
+  const byKeep = new Map();
+  document.querySelectorAll(".dedupe-cb:checked").forEach(cb => {
+    const keepId = parseInt(cb.dataset.keep, 10);
+    if (!byKeep.has(keepId)) byKeep.set(keepId, []);
+    byKeep.get(keepId).push(parseInt(cb.dataset.merge, 10));
+  });
+  return [...byKeep.entries()].map(([keep_id, merge_ids]) => ({ keep_id, merge_ids }));
+}
+
+function updateDedupeCount() {
+  const n = document.querySelectorAll(".dedupe-cb:checked").length;
+  const total = document.querySelectorAll(".dedupe-cb").length;
+  const label = document.getElementById("dedupeCount");
+  if (label) label.textContent = `${n} of ${total} selected`;
+
+  const btn = document.getElementById("dedupeMergeBtn");
+  if (btn) {
+    btn.disabled = n === 0;
+    btn.textContent = n ? `Merge ${n} duplicate${n === 1 ? "" : "s"}` : "Nothing selected";
+  }
+
+  // Dim groups with nothing selected
+  document.querySelectorAll(".dedupe-group").forEach(g => {
+    const any = g.querySelectorAll(".dedupe-cb:checked").length > 0;
+    g.classList.toggle("dimmed", !any);
+  });
+}
+
+async function mergeDuplicates() {
+  const selection = selectedDuplicates();
+  const count = selection.reduce((n, g) => n + g.merge_ids.length, 0);
+  if (!count) return;
+
+  if (!confirm(
+      `Merge ${count} selected duplicate${count === 1 ? "" : "s"}?\n\n` +
+      `The kept record in each group absorbs any missing details, and reviews ` +
+      `or reports attached to a duplicate move across to it. Duplicates are ` +
+      `hidden from the map, not permanently deleted.`)) {
+    return;
+  }
+
+  const btn = document.getElementById("dedupeMergeBtn");
+  const box = document.getElementById("dedupeResult");
+  btn.disabled = true;
+  btn.textContent = "Merging...";
+
+  try {
+    const r = await fetch(`${API}/api/admin/duplicates`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ ...dedupeParams(), selection }),
+    });
+    const data = await safeJson(r);
+    if (!data.ok) throw new Error(data.error || "Merge failed");
+
+    lastDedupeScan = null;
+    box.className = "dedupe-result empty-state";
+    box.innerHTML = `
+      <div class="dedupe-summary" style="background:#f0fdf4; color:#166534;">
+        <strong>Merged ${data.merged} duplicate${data.merged === 1 ? "" : "s"}</strong>
+        across ${data.groups} group${data.groups === 1 ? "" : "s"}.
+        ${data.skipped ? `${data.skipped} left untouched. ` : ""}
+        Reload the map to see the result.
+      </div>`;
+  } catch (e) {
+    box.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
+    btn.disabled = false;
+    btn.textContent = `Merge ${count} duplicate${count === 1 ? "" : "s"}`;
+  }
+}
+
+async function saveSettings() {
+  const btn = document.getElementById("saveBtn");
+  const msg = document.getElementById("saveMsg");
+  btn.disabled = true; msg.textContent = ""; msg.className = "save-msg";
+
+  const payload = {
+    site_name: document.getElementById("cfgSiteName").value.trim(),
+    tagline: document.getElementById("cfgTagline").value.trim(),
+    logo: CONFIG.logo || "logo.png",
+    theme_color: document.getElementById("cfgThemeColor").value,
+    accent_color: document.getElementById("cfgAccentColor").value,
+    font_family: document.getElementById("cfgFont").value,
+    sidebar_style: document.getElementById("cfgSidebarStyle").value,
+    theme_tokens: activeThemeTokens || CONFIG.theme_tokens || null,
+    default_layer: document.getElementById("cfgDefaultLayer").value,
+    carto_api_key: keyFieldValue("cfgCartoKey"),
+    foursquare_api_key: keyFieldValue("cfgFoursquareKey"),
+    google_api_key: keyFieldValue("cfgGoogleKey"),
+    overture_release: document.getElementById("cfgOvertureRelease").value.trim(),
+    quick_links: quickLinks.filter(l => l.name && l.url),
+    social: {
+      facebook:  document.getElementById("cfgSocialFacebook").value.trim(),
+      instagram: document.getElementById("cfgSocialInstagram").value.trim(),
+      x:         document.getElementById("cfgSocialX").value.trim(),
+      email:     document.getElementById("cfgSocialEmail").value.trim(),
+    },
+  };
+
+  try {
+    const r = await fetch(API + "/api/admin/config", { method: "POST", headers: headers(), body: JSON.stringify(payload) });
+    const data = await r.json();
+    if (data.ok) {
+      msg.textContent = "Saved \u2014 reload the map to see changes";
+      msg.className = "save-msg ok";
+    } else {
+      msg.textContent = data.error || "Save failed";
+      msg.className = "save-msg err";
+    }
+  } catch (e) {
+    msg.textContent = "Save failed: " + e.message;
+    msg.className = "save-msg err";
+  }
+  btn.disabled = false;
+}
+
+// ---------------------------------------------------------------------------
+// API key fields
+//
+// The server never sends a key back in full — only a masked form like
+// "AIza••••••••9f3c". We show that as a placeholder and leave the input empty.
+// On save we send the masked value back untouched, which the server reads as
+// "leave it alone". Typing a real value replaces it; clearing it removes it.
+// ---------------------------------------------------------------------------
+function setKeyField(elementId, field) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  const masked = CONFIG[field + "_masked"] || "";
+  const isSet = CONFIG[field + "_set"];
+  el.value = "";
+  el.placeholder = isSet ? masked + "  (saved — type to replace)" : "Not set";
+  el.dataset.masked = masked;
+  el.dataset.wasSet = isSet ? "1" : "";
+}
+
+function keyFieldValue(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return "";
+  const typed = el.value.trim();
+  if (typed) return typed;                       // a new key
+  if (el.dataset.wasSet) return el.dataset.masked; // unchanged — server keeps it
+  return "";                                     // never set, or cleared
+}
+
+function clearKeyField(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.value = "";
+  el.placeholder = "Not set";
+  el.dataset.wasSet = "";
+  el.dataset.masked = "";
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+if (TOKEN) authenticate();
+</script>
+</body>
+</html>

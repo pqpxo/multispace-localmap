@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Map — Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --primary: #35425c;
+    --primary-light: #4a5a78;
+    --primary-dark: #2a3448;
+    --bg: #f8f9fb;
+    --card: #fff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --radius: 14px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; font-family: 'Roboto', sans-serif; color: var(--fg); background: var(--bg); }
+
+  .wizard {
+    max-width: 640px; margin: 0 auto; padding: 40px 24px 60px;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+
+  /* Header */
+  .wizard-header { text-align: center; margin-bottom: 36px; }
+  .wizard-header h1 { font-size: 28px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+  .wizard-header p { color: var(--muted); font-size: 15px; margin-top: 6px; }
+
+  /* Progress bar */
+  .progress-bar { display: flex; gap: 6px; margin-bottom: 32px; }
+  .progress-step {
+    flex: 1; height: 6px; border-radius: 3px;
+    background: var(--border); transition: background 0.3s;
+  }
+  .progress-step.done { background: var(--primary); }
+  .progress-step.active { background: var(--primary-light); }
+
+  /* Card (each step) */
+  .step {
+    display: none; background: var(--card); border-radius: var(--radius);
+    padding: 28px; box-shadow: var(--shadow); flex: 1;
+  }
+  .step.active { display: flex; flex-direction: column; }
+  .step h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .step .step-desc { color: var(--muted); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+
+  /* Form elements */
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 14px; font-size: 15px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 10px; background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(53,66,92,0.1); background: #fff; }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* Colour picker */
+  .color-row { display: flex; gap: 12px; align-items: center; }
+  .color-row input[type="color"] {
+    width: 48px; height: 48px; border: 2px solid var(--border); border-radius: 10px;
+    padding: 2px; cursor: pointer; background: #fff;
+  }
+  .color-row .color-label { font-size: 14px; color: var(--muted); }
+
+  /* Map picker */
+  #setupMap { height: 300px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 12px; }
+  .map-hint { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+  .coords-display { font-size: 13px; color: var(--primary); font-weight: 500; text-align: center; margin: 8px 0; }
+
+  /* Logo upload */
+  .logo-upload {
+    display: flex; align-items: center; gap: 16px; padding: 16px;
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .logo-upload:hover { border-color: var(--primary); }
+  .logo-upload img { width: 64px; height: 64px; border-radius: 12px; object-fit: contain; background: #f0f0f0; }
+  .logo-upload .upload-text { font-size: 14px; color: var(--muted); }
+  .logo-upload .upload-text strong { color: var(--fg); display: block; }
+
+  /* Quick links editor */
+  .links-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .link-row { display: flex; gap: 10px; align-items: flex-start; padding: 12px;
+              border: 1px solid var(--border); border-radius: 10px; background: #fafafa; }
+  .link-icon-box { width: 48px; height: 48px; border-radius: 9px; border: 2px dashed var(--border);
+                   display: flex; align-items: center; justify-content: center; cursor: pointer;
+                   overflow: hidden; background: #fff; flex-shrink: 0; }
+  .link-icon-box:hover { border-color: var(--primary); }
+  .link-icon-box img { width: 100%; height: 100%; object-fit: contain; }
+  .link-icon-box .plus { color: var(--muted); font-size: 20px; }
+  .link-inputs { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+  .link-inputs input { padding: 9px 11px; font-size: 13px; background: #fff; }
+  .link-row .remove-link {
+    background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer;
+    padding: 4px 8px; border-radius: 6px; flex-shrink: 0;
+  }
+  .link-row .remove-link:hover { background: #fee2e2; color: #dc2626; }
+  .add-link-btn {
+    background: none; border: 1px dashed var(--border); border-radius: 8px;
+    padding: 10px; font-size: 13px; color: var(--muted); cursor: pointer;
+    width: 100%; text-align: center; transition: border-color 0.2s;
+  }
+  .add-link-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* Radius slider */
+  .radius-row { display: flex; align-items: center; gap: 12px; }
+  .radius-row input[type="range"] { flex: 1; }
+  .radius-val { font-size: 14px; font-weight: 600; color: var(--primary); min-width: 50px; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 12px; margin-top: auto; padding-top: 20px; }
+  .btn {
+    flex: 1; padding: 13px; font-size: 15px; font-weight: 600; border-radius: 10px;
+    cursor: pointer; font-family: inherit; border: none; transition: background 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-secondary { background: var(--border); color: var(--fg); }
+  .btn-secondary:hover { background: #d1d5db; }
+  .btn-success { background: #15803d; color: #fff; }
+  .btn-success:hover { background: #166534; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Import progress */
+  .source {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 12px; background: #fafbfc;
+  }
+  .source-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .source-name { font-size: 15px; font-weight: 600; }
+  .source-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .src-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+             padding: 2px 7px; border-radius: 4px; background: #eef0f4; color: var(--muted); margin-left: 6px; vertical-align: middle; }
+  .source-btn { flex: 0 0 auto; padding: 9px 18px; font-size: 13px; }
+  .import-status { padding: 16px; background: #f0fdf4; border-radius: 10px; margin: 12px 0; font-size: 14px; color: #166534; display: none; }
+  .import-status.error { background: #fef2f2; color: #991b1b; }
+  .import-status.show { display: block; }
+
+  /* Review summary */
+  .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .review-item { padding: 12px; background: #f8f9fb; border-radius: 10px; }
+  .review-item .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .review-item .value { font-size: 15px; font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .wizard { padding: 24px 16px 40px; }
+    .step { padding: 20px; }
+    #setupMap { height: 240px; }
+    .review-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wizard">
+  <div class="wizard-header">
+    <h1>Local Map Setup</h1>
+    <p>Configure your community map in a few quick steps</p>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-step active" data-step="1"></div>
+    <div class="progress-step" data-step="2"></div>
+    <div class="progress-step" data-step="3"></div>
+    <div class="progress-step" data-step="4"></div>
+    <div class="progress-step" data-step="5"></div>
+    <div class="progress-step" data-step="6"></div>
+  </div>
+
+  <!-- STEP 1: Area -->
+  <div class="step active" data-step="1">
+    <h2>Choose your area</h2>
+    <p class="step-desc">Enter a UK postcode or place name. We'll find the coordinates and set up the map boundary for you.</p>
+
+    <div class="field">
+      <label>Postcode or place name</label>
+      <input type="text" id="areaQuery" placeholder="e.g. NG6 8EW or Bulwell" autocomplete="off">
+      <div class="hint">Try a postcode for best results, or a town/village name</div>
+    </div>
+
+    <div class="field">
+      <label>Area name (for display)</label>
+      <input type="text" id="areaName" placeholder="e.g. Bulwell, Arnold, Hucknall">
+    </div>
+
+    <div class="field">
+      <label>Coverage radius</label>
+      <div class="radius-row">
+        <input type="range" id="radiusSlider" min="1" max="10" step="0.5" value="3">
+        <span class="radius-val" id="radiusVal">3 km</span>
+      </div>
+    </div>
+
+    <div id="setupMap"></div>
+    <div class="map-hint">Click the map to adjust the centre point</div>
+    <div class="coords-display" id="coordsDisplay"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Branding -->
+  <div class="step" data-step="2">
+    <h2>Name & branding</h2>
+    <p class="step-desc">Give your map a name, tagline, and optional logo.</p>
+
+    <div class="field">
+      <label>Site name</label>
+      <input type="text" id="siteName" placeholder="e.g. Bulwell Local">
+      <div class="hint">This appears in the browser tab and sidebar header</div>
+    </div>
+
+    <div class="field">
+      <label>Tagline</label>
+      <input type="text" id="siteTagline" placeholder="e.g. Explore shops, services, events & more across Bulwell">
+    </div>
+
+    <div class="field">
+      <label>Theme colour</label>
+      <div class="color-row">
+        <input type="color" id="themeColor" value="#35425c">
+        <span class="color-label" id="colorLabel">#35425c</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Logo (optional)</label>
+      <label class="logo-upload" for="logoFile">
+        <img id="logoPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='12' fill='%23e5e7eb'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-size='24' fill='%239ca3af'%3E📍%3C/text%3E%3C/svg%3E" alt="Logo preview">
+        <div class="upload-text">
+          <strong>Click to upload</strong>
+          PNG, JPG, or SVG. Max 2MB.
+        </div>
+      </label>
+      <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(1)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Quick Links -->
+  <div class="step" data-step="3">
+    <h2>Quick links</h2>
+    <p class="step-desc">Add useful links for your area — local news, council page, traffic, police, etc. These appear in the Quick Links popup on the map. You can skip this and add them later.</p>
+
+    <div class="links-list" id="linksList"></div>
+    <button class="add-link-btn" onclick="addLinkRow()">+ Add a link</button>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(2)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(4)">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Data Import -->
+  <div class="step" data-step="4">
+    <h2>Import data</h2>
+    <p class="step-desc">Pull local data into your map. Run them in order — OpenStreetMap builds the base layer, then the others enrich it. All three are free and need no API keys.</p>
+
+    <div class="source" id="src-osm">
+      <div class="source-head">
+        <div>
+          <div class="source-name">OpenStreetMap</div>
+          <div class="source-desc">Shops, restaurants, schools, GPs, pubs, parks and more. Start here.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="osm" onclick="runImport('osm')">Import</button>
+      </div>
+      <div class="import-status" id="status-osm"></div>
+    </div>
+
+    <div class="source" id="src-fsa">
+      <div class="source-head">
+        <div>
+          <div class="source-name">Food Standards Agency</div>
+          <div class="source-desc">Food hygiene ratings for every inspected food business. Adds missing venues and rates existing ones.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="fsa" onclick="runImport('fsa')">Import</button>
+      </div>
+      <div class="import-status" id="status-fsa"></div>
+    </div>
+
+    <div class="source" id="src-naptan">
+      <div class="source-head">
+        <div>
+          <div class="source-name">NaPTAN transport stops</div>
+          <div class="source-desc">Official bus stops, rail stations and tram stops from the Department for Transport.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="naptan" onclick="runImport('naptan')">Import</button>
+      </div>
+      <div class="import-status" id="status-naptan"></div>
+    </div>
+
+    <div class="source" id="src-overture">
+      <div class="source-head">
+        <div>
+          <div class="source-name">Overture Maps <span class="src-tag">open data</span></div>
+          <div class="source-desc">Open place data backed by Meta, Microsoft, Amazon and TomTom. No key needed, but the first run can take a minute.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="overture" onclick="runImport('overture')">Import</button>
+      </div>
+      <div class="import-status" id="status-overture"></div>
+    </div>
+
+    <div class="source" id="src-foursquare">
+      <div class="source-head">
+        <div>
+          <div class="source-name">Foursquare <span class="src-tag">needs key</span></div>
+          <div class="source-desc">Rich business listings with phone numbers and websites. Add a free key below, then import.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="foursquare" onclick="runImport('foursquare')">Import</button>
+      </div>
+      <div class="field" style="margin-top:12px; margin-bottom:0;">
+        <input type="text" id="fsqKey" placeholder="Foursquare API key (optional)" oninput="state.foursquareKey = this.value.trim()">
+        <div class="hint">Free key from foursquare.com/developers. Leave blank to skip.</div>
+      </div>
+      <div class="import-status" id="status-foursquare"></div>
+    </div>
+
+    <div class="source" id="src-google">
+      <div class="source-head">
+        <div>
+          <div class="source-name">Google Places <span class="src-tag">needs key</span></div>
+          <div class="source-desc">The best source for opening hours and phone numbers. Requires a key with billing enabled; one run makes 12 API calls, well inside the free monthly allowance.</div>
+        </div>
+        <button class="btn btn-primary source-btn" data-source="google" onclick="runImport('google')">Import</button>
+      </div>
+      <div class="field" style="margin-top:12px; margin-bottom:0;">
+        <input type="text" id="googleKey" placeholder="Google Places API key (optional)" oninput="state.googleKey = this.value.trim()">
+        <div class="hint">console.cloud.google.com → enable "Places API (New)". Leave blank to skip.</div>
+      </div>
+      <div class="import-status" id="status-google"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(3)">Back</button>
+      <button class="btn btn-primary" onclick="goStep(5)">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: Review -->
+  <div class="step" data-step="5">
+    <h2>Review</h2>
+    <p class="step-desc">Check everything looks right before finishing.</p>
+
+    <div class="review-grid" id="reviewGrid"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(4)">Back</button>
+      <button class="btn btn-success" id="finishBtn" onclick="finishSetup()">Finish setup</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: Done -->
+  <div class="step" data-step="6">
+    <h2 style="text-align:center;">You're all set! 🎉</h2>
+    <p class="step-desc" style="text-align:center;">Your community map is ready. Click below to open it.</p>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn btn-primary" onclick="window.location.href='/';" style="max-width:200px;">Open your map</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---------------------------------------------------------------------------
+// Wizard state
+// ---------------------------------------------------------------------------
+const state = {
+  center: null,
+  areaName: "",
+  radiusKm: 3,
+  boundary: [],
+  bbox: [],
+  siteName: "",
+  tagline: "",
+  themeColor: "#35425c",
+  logo: "logo.png",
+  quickLinks: [],
+  imported: { osm: 0, fsa: 0, naptan: 0, overture: 0, foursquare: 0, google: 0 },
+  foursquareKey: "",
+  googleKey: "",
+};
+
+let currentStep = 1;
+let setupMap = null;
+let centerMarker = null;
+let boundaryLayer = null;
+
+// ---------------------------------------------------------------------------
+// Map initialisation
+// ---------------------------------------------------------------------------
+window.addEventListener("DOMContentLoaded", () => {
+  setupMap = L.map("setupMap").setView([53.5, -1.5], 6); // UK overview
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    attribution: '© OSM · © CARTO',
+  }).addTo(setupMap);
+
+  // Click to place centre
+  setupMap.on("click", (e) => {
+    setCenter(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Radius slider
+  document.getElementById("radiusSlider").addEventListener("input", (e) => {
+    state.radiusKm = parseFloat(e.target.value);
+    document.getElementById("radiusVal").textContent = state.radiusKm + " km";
+    if (state.center) drawBoundary();
+  });
+
+  // Colour picker
+  document.getElementById("themeColor").addEventListener("input", (e) => {
+    state.themeColor = e.target.value;
+    document.getElementById("colorLabel").textContent = e.target.value;
+  });
+
+  // Geocode on Enter
+  document.getElementById("areaQuery").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") geocodeArea();
+  });
+  document.getElementById("areaQuery").addEventListener("blur", geocodeArea);
+
+  // Auto-fill site name from area name
+  document.getElementById("areaName").addEventListener("input", (e) => {
+    const name = e.target.value.trim();
+    state.areaName = name;
+    document.getElementById("siteName").value = name ? name + " Local" : "";
+    document.getElementById("siteTagline").value = name ? `Explore shops, services, events & more across ${name}` : "";
+  });
+
+  // Add one empty link row by default
+  addLinkRow();
+});
+
+// ---------------------------------------------------------------------------
+// Geocoding
+// ---------------------------------------------------------------------------
+async function geocodeArea() {
+  const query = document.getElementById("areaQuery").value.trim();
+  if (!query) return;
+
+  try {
+    const r = await fetch("/api/setup/geocode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    const data = await r.json();
+    if (data.lat && data.lon) {
+      setCenter(data.lat, data.lon);
+      if (data.name && !document.getElementById("areaName").value) {
+        document.getElementById("areaName").value = data.name;
+        document.getElementById("areaName").dispatchEvent(new Event("input"));
+      }
+      setupMap.setView([data.lat, data.lon], 13);
+    }
+  } catch(e) {
+    console.error("Geocode failed:", e);
+  }
+}
+
+function setCenter(lat, lon) {
+  state.center = [lat, lon];
+  if (centerMarker) {
+    centerMarker.setLatLng([lat, lon]);
+  } else {
+    centerMarker = L.marker([lat, lon], { draggable: true }).addTo(setupMap);
+    centerMarker.on("dragend", () => {
+      const pos = centerMarker.getLatLng();
+      state.center = [pos.lat, pos.lng];
+      drawBoundary();
+      updateCoordsDisplay();
+    });
+  }
+  drawBoundary();
+  updateCoordsDisplay();
+}
+
+async function drawBoundary() {
+  if (!state.center) return;
+  try {
+    const r = await fetch("/api/setup/boundary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: state.center[0], lon: state.center[1], radius_km: state.radiusKm }),
+    });
+    const data = await r.json();
+    state.boundary = data.polygon;
+    state.bbox = data.bbox;
+
+    if (boundaryLayer) setupMap.removeLayer(boundaryLayer);
+    boundaryLayer = L.polygon(data.polygon, {
+      fillColor: "#35425c", fillOpacity: 0.1,
+      color: "#35425c", weight: 2, dashArray: "6 4",
+    }).addTo(setupMap);
+    setupMap.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
+  } catch(e) {
+    console.error("Boundary generation failed:", e);
+  }
+}
+
+function updateCoordsDisplay() {
+  if (state.center) {
+    document.getElementById("coordsDisplay").textContent =
+      `📍 ${state.center[0].toFixed(5)}, ${state.center[1].toFixed(5)}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Logo upload
+// ---------------------------------------------------------------------------
+async function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Preview
+  const reader = new FileReader();
+  reader.onload = (e) => { document.getElementById("logoPreview").src = e.target.result; };
+  reader.readAsDataURL(file);
+
+  // Upload
+  const formData = new FormData();
+  formData.append("logo", file);
+  try {
+    const r = await fetch("/api/setup/upload-logo", { method: "POST", body: formData });
+    const data = await r.json();
+    if (data.filename) state.logo = data.filename;
+  } catch(e) {
+    console.error("Logo upload failed:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick links
+// ---------------------------------------------------------------------------
+function addLinkRow(name = "", url = "", label = "", icon = "") {
+  const list = document.getElementById("linksList");
+  const idx = document.querySelectorAll(".link-row").length;
+  const row = document.createElement("div");
+  row.className = "link-row";
+  row.dataset.icon = icon;
+  row.innerHTML = `
+    <div class="link-icon-box" onclick="this.parentElement.querySelector('.link-icon-file').click()">
+      ${icon ? `<img src="${icon}" alt="">` : '<span class="plus">+</span>'}
+    </div>
+    <input type="file" class="link-icon-file" accept="image/*" style="display:none">
+    <div class="link-inputs">
+      <input type="text" placeholder="Name (e.g. Local News)" value="${name}" class="link-name">
+      <input type="text" placeholder="Short description" value="${label}" class="link-label">
+      <input type="text" placeholder="https://..." value="${url}" class="link-url">
+    </div>
+    <button class="remove-link" onclick="this.parentElement.remove()">&times;</button>
+  `;
+  list.appendChild(row);
+  row.querySelector(".link-icon-file").addEventListener("change", function() {
+    uploadLinkIcon(this, row);
+  });
+}
+
+async function uploadLinkIcon(input, row) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("logo", file);
+  try {
+    const r = await fetch("/api/setup/upload-logo", { method: "POST", body: fd });
+    const data = await r.json();
+    if (data.filename) {
+      row.dataset.icon = data.filename;
+      row.querySelector(".link-icon-box").innerHTML =
+        `<img src="${data.filename}?t=${Date.now()}" alt="">`;
+    }
+  } catch (e) { console.error("Icon upload failed:", e); }
+}
+
+function collectLinks() {
+  const rows = document.querySelectorAll(".link-row");
+  const links = [];
+  rows.forEach(row => {
+    const name = row.querySelector(".link-name").value.trim();
+    const url = row.querySelector(".link-url").value.trim();
+    const label = row.querySelector(".link-label").value.trim();
+    if (name && url) links.push({ name, url, label, icon: row.dataset.icon || "" });
+  });
+  return links;
+}
+
+// ---------------------------------------------------------------------------
+// Import
+// ---------------------------------------------------------------------------
+const SOURCE_LABELS = {
+  osm:        "OpenStreetMap",
+  fsa:        "the Food Standards Agency",
+  naptan:     "NaPTAN",
+  overture:   "Overture Maps",
+  foursquare: "Foursquare",
+  google:     "Google Places",
+};
+
+async function runImport(source) {
+  const btn = document.querySelector(`.source-btn[data-source="${source}"]`);
+  const status = document.getElementById("status-" + source);
+  const label = SOURCE_LABELS[source] || source;
+
+  btn.disabled = true;
+  btn.textContent = "Importing...";
+  status.className = "import-status show";
+  status.textContent = `Connecting to ${label}...`;
+
+  // Save config first (not finalised) so the server knows the area
+  try {
+    const saved = await saveConfigToServer(false);
+    if (!saved.ok) {
+      status.textContent = `Couldn't save area settings: ${saved.error || "unknown error"}`;
+      status.className = "import-status show error";
+      btn.disabled = false; btn.textContent = "Import";
+      return;
+    }
+  } catch (e) {
+    status.textContent = `Couldn't save area settings: ${e.message}`;
+    status.className = "import-status show error";
+    btn.disabled = false; btn.textContent = "Import";
+    return;
+  }
+
+  try {
+    const r = await fetch("/api/setup/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source }),
+    });
+    const data = await safeJson(r);
+    if (!data.ok) throw new Error(data.error || "Import failed");
+
+    // Imports run in the background — poll so slow sources don't time out
+    const result = await pollImportJob(data.job_id, status, label);
+    state.imported[source] = result.imported;
+
+    if (!result.imported) {
+      status.textContent = `Connected to ${label} but found nothing new. Try a larger radius, or you may have imported this already.`;
+      status.className = "import-status show error";
+    } else {
+      const verb = ["fsa","foursquare","overture","google"].includes(source) ? "added or enriched" : "imported";
+      status.textContent = `${result.imported} places ${verb} from ${label}`;
+      status.className = "import-status show";
+    }
+    btn.textContent = "Import again";
+  } catch (e) {
+    status.textContent = e.message;
+    status.className = "import-status show error";
+    btn.textContent = "Import";
+  }
+
+  btn.disabled = false;
+}
+
+// A proxy timeout or crash returns HTML; calling .json() on that throws an
+// unhelpful parse error, so read the text first.
+async function safeJson(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const snippet = text.trim().slice(0, 120).replace(/\s+/g, " ");
+    throw new Error(
+      response.status === 504 || response.status === 502
+        ? `The server took too long to respond (${response.status}).`
+        : `Server returned ${response.status} instead of JSON: ${snippet || "(empty response)"}`
+    );
+  }
+}
+
+async function pollImportJob(jobId, statusEl, label) {
+  const started = Date.now();
+  while (true) {
+    await new Promise(res => setTimeout(res, 2000));
+    const elapsed = Math.round((Date.now() - started) / 1000);
+    if (elapsed > 600) {
+      throw new Error(`${label} is taking longer than 10 minutes — check the container logs.`);
+    }
+    let job;
+    try {
+      const r = await fetch(`/api/setup/import/status?job_id=${encodeURIComponent(jobId)}`);
+      job = await safeJson(r);
+    } catch (e) {
+      continue;   // transient blip — keep waiting
+    }
+    if (job.status === "running") {
+      statusEl.textContent = `Importing from ${label}… ${job.elapsed || elapsed}s elapsed`;
+      statusEl.className = "import-status show";
+      continue;
+    }
+    if (job.status === "error") throw new Error(job.error || "Import failed");
+    return job;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+function goStep(n) {
+  // Validate current step
+  if (n > currentStep) {
+    if (currentStep === 1 && !state.center) {
+      alert("Please enter a postcode or click the map to set a centre point.");
+      return;
+    }
+    if (currentStep === 1 && !document.getElementById("areaName").value.trim()) {
+      alert("Please enter an area name.");
+      return;
+    }
+    if (currentStep === 2 && !document.getElementById("siteName").value.trim()) {
+      alert("Please enter a site name.");
+      return;
+    }
+  }
+
+  // Collect current step data
+  if (currentStep === 1) {
+    state.areaName = document.getElementById("areaName").value.trim();
+    state.radiusKm = parseFloat(document.getElementById("radiusSlider").value);
+  }
+  if (currentStep === 2) {
+    state.siteName = document.getElementById("siteName").value.trim();
+    state.tagline = document.getElementById("siteTagline").value.trim();
+    state.themeColor = document.getElementById("themeColor").value;
+  }
+  if (currentStep === 3) {
+    state.quickLinks = collectLinks();
+  }
+
+  // Build review grid on step 5
+  if (n === 5) buildReview();
+
+  // Switch step
+  currentStep = n;
+  document.querySelectorAll(".step").forEach(s => s.classList.toggle("active", parseInt(s.dataset.step) === n));
+  document.querySelectorAll(".progress-step").forEach(s => {
+    const stepN = parseInt(s.dataset.step);
+    s.classList.toggle("done", stepN < n);
+    s.classList.toggle("active", stepN === n);
+  });
+
+  // Fix map rendering when returning to step 1
+  if (n === 1 && setupMap) setTimeout(() => setupMap.invalidateSize(), 100);
+
+  window.scrollTo(0, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Review
+// ---------------------------------------------------------------------------
+function totalImported() {
+  return Object.values(state.imported).reduce((a, b) => a + (b || 0), 0);
+}
+
+function buildReview() {
+  const grid = document.getElementById("reviewGrid");
+  const items = [
+    { label: "Area", value: state.areaName },
+    { label: "Site name", value: state.siteName },
+    { label: "Centre", value: state.center ? `${state.center[0].toFixed(4)}, ${state.center[1].toFixed(4)}` : "Not set" },
+    { label: "Radius", value: state.radiusKm + " km" },
+    { label: "Theme", value: state.themeColor },
+    { label: "Quick links", value: state.quickLinks.length + " configured" },
+    { label: "Logo", value: state.logo },
+    { label: "Places imported", value: totalImported() || "None yet" },
+  ];
+  grid.innerHTML = items.map(i => `
+    <div class="review-item">
+      <div class="label">${i.label}</div>
+      <div class="value">${i.value}</div>
+    </div>
+  `).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Save config & finish
+// ---------------------------------------------------------------------------
+async function saveConfigToServer(finalize = false) {
+  const cfg = {
+    site_name: state.siteName || state.areaName + " Local",
+    area_name: state.areaName,
+    tagline: state.tagline || `Explore shops, services, events & more across ${state.areaName}`,
+    center: state.center,
+    default_zoom: 14,
+    min_zoom: 13,
+    radius_km: state.radiusKm,
+    boundary_polygon: state.boundary,
+    overpass_bbox: state.bbox,
+    theme_color: state.themeColor,
+    theme: {
+      primary: state.themeColor,
+      accent: "#f4c430",
+      font_family: "'Roboto', system-ui, sans-serif",
+      font_url: "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap",
+    },
+    tiles: { default: "Light", carto_api_key: "" },
+    logo: state.logo,
+    quick_links: state.quickLinks,
+    foursquare_api_key: state.foursquareKey || "",
+    google_api_key: state.googleKey || "",
+    finalize: finalize,
+  };
+
+  const r = await fetch("/api/setup/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg),
+  });
+  return await r.json();
+}
+
+async function finishSetup() {
+  const btn = document.getElementById("finishBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    const result = await saveConfigToServer(true);
+    if (result.ok) {
+      goStep(6);
+      return;
+    }
+    alert("Failed to save: " + (result.error || "Unknown error"));
+  } catch (e) {
+    alert("Failed to save: " + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Finish setup";
+}
+</script>
+</body>
+</html>
