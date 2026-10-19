@@ -1,342 +1,286 @@
-# Local Map
+<!-- version 2 -->
 
-**Version 1.0.0** · [Changelog](CHANGELOG.md)
+<p align="center">
+  <a href="https://github.com/pqpxo/multispace-localmap/blob/main/public/logo.png">
+    <img src="public/logo.png" alt="Multi Space Local Map logo" width="200">
+  </a>
+</p>
 
-A self-hosted community map for any UK town, village or neighbourhood. Point it
-at an area, import local data from open sources, and you have a searchable map of
-shops, food, services, GPs, schools, parks and transport — with a moderation
-queue so residents can submit corrections, reviews and events.
+<h1 align="center">Multi Space Local Map</h1>
 
-Built as a single container that can be configured for any area — deploy one
-instance per town and each keeps its own data, branding and settings.
+<p align="center">
+  <strong>One local map. Every place that matters.</strong><br>
+  A self-hosted, customisable community map for UK towns, villages and neighbourhoods.
+</p>
 
----
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-35425c?style=flat-square">
+  <img alt="Docker" src="https://img.shields.io/badge/deployment-Docker-35425c?style=flat-square">
+  <img alt="Python" src="https://img.shields.io/badge/backend-Python%20%2B%20Flask-35425c?style=flat-square">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-35425c?style=flat-square"></a>
+</p>
 
-## What it does
-
-- **Interactive map** with category filters, smart search, clustering and food
-  hygiene ratings
-- **First-run setup wizard** — pick an area by postcode, set branding, import data
-- **Six data sources**, all wired into the wizard and admin panel
-- **Community submissions** — residents can add businesses, report closures,
-  leave reviews and submit events, all queued for moderation
-- **Duplicate detection** with per-record selection before merging
-- **16 themes**, each a full palette, plus configurable fonts and map tiles
-- **Admin panel** for moderation, theming, quick links and re-running imports
-- **Email and push notifications** when something needs reviewing
-- **Accessible by default** — keyboard navigable, screen-reader labelled,
-  WCAG AA contrast across every theme
-
-Runs as a single Docker container with a SQLite database. No external services
-required beyond the data sources you choose to enable.
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#data-sources">Data sources</a> ·
+  <a href="#customisation">Customisation</a> ·
+  <a href="#deployment--configuration">Configuration</a>
+</p>
 
 ---
+
+## About
+
+**Multi Space Local Map** turns open location data into a useful, searchable map for a local community. Discover shops, restaurants, services, schools, healthcare, parks and transport in one place — then let residents help keep that information up to date.
+
+The platform is **location-independent**: choose an area during setup, add your own name and logo, select a theme, and import places. Run a separate instance for another area without changing the application code.
+
+Built with **Flask, Leaflet and SQLite**, it runs in a single Docker container. No external database is required.
+
+## Features
+
+| | Feature | Description |
+|---|---|---|
+| 📍 | **Interactive local map** | Search, category filters, marker clustering and place details, including food hygiene information where available. |
+| 🧭 | **Guided first-run setup** | Choose a location by postcode or place name, set a map radius, brand the site and import local places. |
+| 🗂️ | **Six place-data sources** | Combine OpenStreetMap, FSA, NaPTAN, Overture, Foursquare and Google Places data. |
+| 🤝 | **Community contributions** | Residents can suggest new places, submit corrections, report closures, leave reviews and propose events. |
+| ✅ | **Moderation dashboard** | Review submissions before they appear publicly, manage settings and rerun data imports. |
+| 🔎 | **Duplicate management** | Find overlapping records, review matches individually and merge without permanently deleting originals. |
+| 🎨 | **Custom branding** | Upload your own logo, change site details, choose from 16 colour themes and customise fonts and map tiles. |
+| 🔔 | **Notifications** | Optional email and Pushover alerts for submissions that need attention. |
+| ♿ | **Accessibility** | Keyboard navigation, labelled controls, reduced-motion support and WCAG 2.1 AA-focused design. |
 
 ## Quick start
 
+### Requirements
+
+- Docker Engine with the Docker Compose plugin
+- Git and Python 3 (to generate a secure admin token)
+- A host port available on **8001** (or edit `docker-compose.yml`)
+- Internet connectivity for the map tiles and whichever data imports you enable
+
+### 1. Clone and configure
+
 ```bash
-git clone <your-repo-url> localmap
-cd localmap
+# version 2
+git clone https://github.com/pqpxo/multispace-localmap.git
+cd multispace-localmap
 
-# Generate an admin token — the server refuses to start without a strong one
-python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+# The container runs as UID 1000; make its persistent directory writable.
+mkdir -p data
+sudo chown 1000:1000 data
 
-cp .env.example .env
-nano .env          # paste the token as ADMIN_TOKEN
+# Create a private .env with a strong, randomly generated admin token.
+# This does not depend on an .env.example file.
+umask 077
+python3 - <<'PY'
+from pathlib import Path
+import secrets
 
-mkdir -p data && sudo chown 1000:1000 data
+Path('.env').write_text(f'ADMIN_TOKEN={secrets.token_urlsafe(32)}\n')
+PY
+```
 
+> **Important:** Keep `.env` and `data/` out of Git. They may contain credentials, database records and other private information. The repository must be accessible to your GitHub account in order to clone it.
+
+### 2. Start the application
+
+```bash
+# version 2
 docker compose up -d --build
 docker compose logs -f
 ```
 
-Open `http://<host>:8001` and the setup wizard runs. The startup log prints your
-randomised admin URL — note it down, it isn't guessable by design.
+Open **`http://YOUR-SERVER-IP:8001`** and follow the first-run wizard. On startup, the application logs a randomised admin URL; save it somewhere secure. The `ADMIN_TOKEN` is required for admin API authentication.
 
-> **Create `data/` before the first run.** If Docker creates it, it will be owned
-> by root and the container (running as UID 1000) can't write the database.
+> **Volume permissions:** Create `data/` *before* your first run. A root-owned bind-mount directory can prevent the non-root container from writing its SQLite database.
 
----
+### 3. Set up your local area
 
-## Setup wizard
-
-Six steps, all reversible from the admin panel afterwards.
-
-| Step | What it does |
+| Step | What you'll configure |
 |---|---|
-| **Area** | Enter a postcode or place name. Geocodes via postcodes.io with a Nominatim fallback, drops a draggable marker, and generates a boundary from your chosen radius (1–10km) |
-| **Branding** | Site name, tagline, theme colour, logo upload |
-| **Quick links** | External links shown in the map's Quick Links popup |
-| **Data import** | Run any of the six sources. OSM first — the others enrich what it finds |
-| **Review** | Confirm everything before committing |
-| **Done** | Writes config and opens the map |
+| **1. Area** | Search by UK postcode or place name, position the marker, and choose a **1–10 km** radius. |
+| **2. Branding** | Set the local map's name, tagline, colours and logo. |
+| **3. Quick links** | Add links to useful local websites and resources. |
+| **4. Data import** | Import places from the sources you want to use. Start with OpenStreetMap. |
+| **5. Review** | Check your selections before saving. |
+| **6. Done** | Save the site configuration and open the map. |
 
----
+You can change area-specific settings later through the admin interface.
 
 ## Data sources
 
-Run OSM first to build the base layer. The rest match against existing places
-within 300m by name similarity and fill in gaps rather than creating duplicates.
+Start with **OpenStreetMap** to create the local place directory; other sources can enrich existing records and fill gaps. Matching considers business names and proximity to help reduce duplicates.
 
-| Source | Key needed | What it adds |
+| Source | API key | Typical information |
 |---|---|---|
-| **OpenStreetMap** | No | Base layer — shops, food, schools, GPs, parks, services |
-| **Food Standards Agency** | No | Hygiene ratings for every inspected food business, plus venues OSM missed |
-| **NaPTAN** | No | Official bus stops, rail and tram stations from the DfT |
-| **Overture Maps** | No | Open place data from Meta, Microsoft, Amazon and TomTom, queried via DuckDB |
-| **Foursquare** | Yes (free) | Business listings with phone numbers and websites |
-| **Google Places** | Yes (billing) | The best opening hours and phone numbers available |
+| **OpenStreetMap (OSM)** | Not required | Shops, food venues, public services, schools, parks and amenities. |
+| **Food Standards Agency** | Not required | Food hygiene ratings and food business records. |
+| **NaPTAN** | Not required | Bus stops and public transport access points. |
+| **Overture Maps** | Not required | Additional open place data queried from Parquet using DuckDB. |
+| **Foursquare Places** | Required | Additional business profiles and contact details. |
+| **Google Places** | Required; billing may apply | Opening hours, contact details and business information. |
 
-All six are re-runnable from **Settings → Data sources**. Imports run in the
-background with progress polling, so a slow source can't hit a reverse-proxy
-timeout. The admin panel warns when a source hasn't been refreshed in 30 days.
+Imports run as background jobs with progress updates and can be repeated from **Settings → Data sources**. The dashboard flags sources that have not been refreshed for **30 days**.
 
-### Google Places cost
+**Notes on third-party services:** Google Places pricing, credits and quotas can change. Review the current [Google Maps Platform pricing](https://mapsplatform.google.com/pricing/) and set an appropriate quota before importing. Overture releases also change over time; consult the [Overture documentation](https://docs.overturemaps.org/) if a pinned release is unavailable.
 
-Google bills each call at the highest SKU tier of *any* field requested. The
-field mask here deliberately excludes `rating`, `reviews` and `photos`, which
-would push calls from Pro to Enterprise tier and roughly double the cost.
+## Community contributions & moderation
 
-One import run makes **12 API calls** against a free allowance of 5,000 Pro-tier
-calls per month. Set a daily quota cap in the Cloud Console anyway — there is no
-hard limit by default.
+Residents can submit new listings, updates to existing places, closure reports, reviews and local events. Submissions go to a moderation queue, where an administrator can approve, reject or remove them. Approved reviews appear against places; approved events are shown on the map.
 
-### Overture
+When multiple providers describe the same location, **Settings → Duplicate places** lets an administrator inspect suggested matches, deselect incorrect matches and merge the remainder. The most complete record is retained, missing details are filled where possible, and linked reviews and reports are reassociated. Merged records are kept in the database rather than hard-deleted.
 
-Queries Overture's public Parquet files on S3 through DuckDB with a bounding-box
-filter, so it reads only the relevant row groups rather than downloading a
-release. The first run takes a minute or so while DuckDB fetches metadata. If the
-pinned release has been retired, set a current one in Settings — they're listed
-at [docs.overturemaps.org](https://docs.overturemaps.org).
+## Customisation
 
----
+Each deployment has its own identity and map configuration. Set the **site name, tagline, logo, links, centre point and coverage radius** without modifying the source code.
 
-## Duplicate detection
+### Themes & typography
 
-Importing from several sources leaves the same business listed more than once —
-Overture draws partly from OpenStreetMap, and Foursquare and Google overlap with
-both. **Settings → Duplicate places** finds records with similar names close
-together and folds them into one.
+Choose from **16 colour palettes**:
 
-Matching normalises names first, stripping punctuation, company suffixes and
-leading articles, then requires both name similarity and physical proximity. The
-record holding the most detail is kept, gaps on it are backfilled from its
-duplicates, source attribution is combined, and any reviews or reports attached
-to a duplicate are re-pointed at the keeper.
+> Midnight · Forest · Harbour · Ocean · Claret · Heather · Terracotta · Charcoal · Sage · Slate · Plum · Moss · Denim · Cocoa · Indigo · Rust
 
-Scanning is non-destructive. Results are listed with each record's source,
-distance and field count so you can judge borderline matches, and every entry has
-a checkbox — untick anything that isn't really a duplicate. Detection re-runs
-server-side on merge, so a stale browser tab can't act on outdated data.
+Each theme updates backgrounds, surfaces, text, borders and accents together. You can also customise individual colours, select one of **five sidebar treatments** and choose from **ten font options**.
 
-Nothing is deleted. Duplicates are marked `merged`, which removes them from the
-map but leaves them recoverable with a single SQL update.
+### Map backgrounds
 
----
-
-## Accessibility
-
-The interface is built to WCAG 2.1 AA:
-
-- Keyboard navigable throughout, with visible `:focus-visible` rings that adapt
-  to light and dark surfaces
-- Every form control has an associated label; control groups use appropriate
-  ARIA roles
-- Modals are proper dialogs; status messages and toasts are announced through
-  live regions
-- Skip link and landmark regions for screen reader navigation
-- `prefers-reduced-motion` honoured — animations are disabled when the operating
-  system asks
-- Touch targets meet the 44px minimum
-- Interface icons are SVG, not emoji, so they render identically everywhere and
-  inherit the theme colour
-- Active states are never signalled by colour alone
-
----
-
-## Configuration
-
-Everything area-specific lives in `data/config.json`, generated by the wizard and
-editable from the admin panel. API keys are stored separately in
-`data/secrets.json` with `0600` permissions and are never sent to the browser.
-
-### Environment variables
-
-| Variable | Required | Purpose |
-|---|---|---|
-| `ADMIN_TOKEN` | **Yes** | Admin API auth. Minimum 20 characters or the server won't start |
-| `ADMIN_PATH` | No | Admin URL path. Randomised each start if unset |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `ADMIN_EMAIL` | No | Email notifications |
-| `PUSHOVER_TOKEN` / `PUSHOVER_USER` | No | Push notifications |
-| `DATA_DIR` | No | Data directory, defaults to `data` |
-
-API keys are **not** set here — enter them in the wizard or admin Settings so
-they go to the secrets store rather than your environment.
-
----
-
-## Theming
-
-Sixteen presets, each defining a complete palette — primary, accent, surface,
-canvas, text, muted text and border — so the page background, form fields,
-popups and borders all shift together rather than only the sidebar changing:
-
-Midnight · Forest · Harbour · Ocean · Claret · Heather · Terracotta · Charcoal ·
-Sage · Slate · Plum · Moss · Denim · Cocoa · Indigo · Rust
-
-Pick one and adjust individual values if you want. The sidebar background offers
-five treatments (gradient, diagonal, solid, deep, accent mix), all derived from
-the primary colour. Ten fonts load from Google Fonts automatically.
-
-Every theme has been checked against WCAG AA for text on surfaces, white on the
-primary colour, and the category list in the sidebar.
-
-### Map tiles
-
-| Layer | Key needed |
+| Map style | Key required |
 |---|---|
-| Light (Esri grey canvas) | No |
-| Light (CARTO) | Yes — free key from carto.com |
-| Standard (OpenStreetMap) | No |
-| Satellite (Esri) | No |
+| Light — Esri grey canvas | No |
+| Standard — OpenStreetMap | No |
+| Satellite — Esri | No |
+| Light — CARTO | Yes |
 
-Without a CARTO key their tiles carry an "API KEY REQUIRED" watermark, so the
-default falls back to Esri's grey canvas, which looks similar and needs nothing.
+The Esri grey canvas provides a key-free light-map option. CARTO tiles require a configured key.
 
----
+## Deployment & configuration
 
-## Deployment behind a reverse proxy
+| Item | Default / location | Purpose |
+|---|---|---|
+| Web port | `8001` | HTTP application port. |
+| App settings | `data/config.json` | Location, branding and site configuration. |
+| Database | `data/places.db` | SQLite records and community data. |
+| Provider secrets | `data/secrets.json` | API credentials stored outside the public settings. |
+| User uploads | `data/uploads/` | Persisted logos and other uploaded images. |
+| Admin token | `.env` → `ADMIN_TOKEN` | Required secret; minimum **20 characters**. |
+| Admin URL | `ADMIN_PATH` | Optional; randomised at startup when unset. |
 
-The container serves plain HTTP on 8001. Put it behind nginx, Caddy, Traefik or
-NGINX Proxy Manager for TLS.
+### Optional environment variables
 
-`ProxyFix` is enabled for one hop, so rate limiting and brute-force lockout see
-real client IPs rather than the proxy's. Forward these headers:
+| Variable | Purpose |
+|---|---|
+| `ADMIN_PATH` | Use a fixed admin URL segment rather than a new random one at startup. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ADMIN_EMAIL` | Email notifications. |
+| `PUSHOVER_TOKEN`, `PUSHOVER_USER` | Pushover notifications. |
+| `DATA_DIR` | Application data directory (defaults to `data`). |
+
+Google Places and Foursquare credentials are managed via the wizard or admin settings rather than the `.env` file. Provider secrets are stored separately in `data/secrets.json` with restricted permissions.
+
+### Running multiple local maps
+
+**One instance represents one area.** To serve another community, use a separate application directory, port, admin token and persistent `data/` directory. You can use the same image/codebase for both deployments; the selected location and branding are stored per instance.
+
+For example, change the second instance's published Compose port from `8001:8001` to `8002:8001`, and open it on port `8002`.
+
+### Reverse proxy / HTTPS
+
+The container serves HTTP on port `8001`. For an internet-facing site, put it behind **Nginx, Caddy, Traefik or Nginx Proxy Manager** and enable HTTPS. When using Nginx, forward the original request information:
 
 ```nginx
+# version 2
+proxy_set_header Host $host;
 proxy_set_header X-Real-IP $remote_addr;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 client_max_body_size 2m;
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 ```
 
-`upgrade-insecure-requests` is only sent in the CSP when the request actually
-arrived over HTTPS, so the app works over plain HTTP on a LAN without breaking
-same-origin `fetch()` calls.
+The application has one-hop `ProxyFix` support. Configure the trust boundary appropriately and avoid exposing the upstream application directly when it is intended to sit behind a reverse proxy. A random admin path is **not** a replacement for the admin token or network-level access controls.
 
-### Restricting the admin panel
+## Security & accessibility
 
-The randomised admin path deters scanning but isn't authentication. If your
-proxy sits behind Cloudflare, a WAF rule adds a real second layer:
+The application includes the following protections:
 
-```
-(http.request.uri.path eq "/<your-admin-path>" and ip.src ne <your.ip.here>)
-```
+- Non-root container and static-file access restricted to `public/`.
+- Separate storage for API secrets; sensitive keys are masked in the admin interface.
+- Timing-safe admin token verification and a **five-attempt / 15-minute** lockout.
+- Community submission rate limiting, input validation and a honeypot field.
+- Setup endpoints restricted after initial configuration.
+- Security response headers, including CSP and other browser protections.
+- Keyboard-accessible controls, labelled form elements, focus indicators, screen-reader announcements, reduced-motion support and accessible touch targets.
 
-Action: Block. Use Managed Challenge instead if your IP is dynamic.
+These controls are not a substitute for sensible firewall rules, HTTPS, backups and keeping the host and container dependencies updated.
 
----
-
-## Security
-
-- Only `public/` is web-accessible — source, database and secrets are not served
-- API keys stored outside `config.json`, masked in the admin UI, never sent to
-  the browser in full
-- Admin auth uses timing-safe comparison with a 5-attempt, 15-minute lockout
-- Submissions rate-limited to 10 per IP per hour, with a honeypot field
-- All input validated: star ratings bounded, fields capped at 2,000 characters,
-  event coordinates checked against the served area, `place_id` verified
-- Setup endpoints lock permanently once setup completes, so the import routes
-  can't be triggered anonymously against metered APIs
-- Server refuses to start with a weak or missing `ADMIN_TOKEN`
-- All SQL parameterised; the one dynamic column name goes through a whitelist
-- CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` set
-- Container runs as a non-root user
-
----
-
-## Project layout
-
-```
-localmap/
-├── server.py              Flask backend — API, importers, admin, setup
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── CHANGELOG.md
-├── public/                The only web-accessible directory
-│   ├── index.html         Map frontend
-│   ├── setup.html         First-run wizard
-│   ├── admin.html         Moderation and settings
-│   ├── style.css
-│   └── logo.png
-└── data/                  Volume mount — not in the image
-    ├── config.json        Site configuration
-    ├── secrets.json       API keys, 0600
-    ├── places.db          SQLite database
-    └── uploads/           Uploaded logos and icons
-```
-
-Uploads live in `data/` rather than `public/` so they survive image rebuilds.
-
----
-
-## Common tasks
+## Maintenance
 
 ```bash
-docker compose logs -f                    # follow logs
-docker compose up -d --build              # rebuild after changes
-docker compose down                       # stop (data is safe in ./data)
+# version 2
+# View application logs
+docker compose logs -f
 
+# Rebuild and restart after pulling changes
+docker compose up -d --build
+
+# Stop containers without removing persistent files
+docker compose down
+
+# Check the number of active places (requires sqlite3 on the host)
 sqlite3 data/places.db "SELECT COUNT(*) FROM places WHERE status='active';"
-sqlite3 data/places.db "SELECT group_name, COUNT(*) FROM places WHERE status='active' GROUP BY group_name;"
 ```
 
-### Running without Docker
+Back up the complete `data/` directory **and** your `.env` securely before major updates or migrations. Avoid publishing database files, uploaded content or tokens in a public repository.
+
+### Run without Docker
+
+The backend can also be run directly with Python, but Docker is the simplest supported deployment path:
 
 ```bash
-pip install -r requirements.txt
+# version 2
+python3 -m pip install -r requirements.txt
 mkdir -p data
 export ADMIN_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-python3 server.py            # optional port argument, defaults to 8001
-                             # serves via waitress when installed
+python3 server.py
 ```
 
----
+The default HTTP port is `8001`.
 
-## Deploying a second area
+## Project structure
 
-Each instance covers one area. Copy the project, use a separate `data/`
-directory and a different port:
-
-```yaml
-services:
-  arnold:
-    build: .
-    ports:
-      - "8002:8001"
-    volumes:
-      - ./data-arnold:/app/data
-    environment:
-      ADMIN_TOKEN: "${ARNOLD_ADMIN_TOKEN:?required}"
+```text
+# version 2
+multispace-localmap/
+├── server.py             # Flask API, imports, admin and setup
+├── requirements.txt      # Python dependencies
+├── Dockerfile            # Application container
+├── docker-compose.yml    # Container and persistent storage
+├── CHANGELOG.md          # Release history
+├── INFO.md               # Project context
+├── LICENSE               # MIT licence
+├── public/               # Frontend resources
+│   ├── index.html        # Interactive map
+│   ├── setup.html        # First-run wizard
+│   ├── admin.html        # Admin dashboard
+│   ├── style.css         # Shared styles
+│   └── logo.png          # Default app logo
+└── data/                 # Generated, persistent data (keep private)
+    ├── config.json
+    ├── secrets.json
+    ├── places.db
+    └── uploads/
 ```
 
-Run the wizard again for the new area. The codebase is identical; only `data/`
-differs.
+## Data attribution & licensing
+
+**OpenStreetMap** data is licensed under ODbL and requires attribution. **FSA** and **NaPTAN** use UK open government data terms; **Overture** datasets have source-dependent licences. **Google Places** and **Foursquare** have separate usage, storage and redistribution terms. Review each provider's current conditions before publishing or redistributing imported data.
+
+The **application source code** is licensed under the [MIT License](LICENSE). See the [Changelog](CHANGELOG.md) for release details.
 
 ---
 
-## Data licensing
-
-OpenStreetMap data is ODbL — attribution is rendered on the map. Overture is
-permissively licensed. FSA and NaPTAN are Open Government Licence. Google Places
-and Foursquare have their own terms restricting caching and redistribution;
-review them before publishing a map built primarily on those sources.
-
----
-
-## Licence
-
-MIT — see `LICENSE`.
+<p align="center">
+  <strong>Multi Space Local Map</strong><br>
+  Built for local communities. Configurable for yours.
+</p>
